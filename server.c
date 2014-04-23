@@ -43,18 +43,19 @@ void printQueue(Queue* q) {
 	int i;
 	printf("BufferSize: %d, Algo: %s, NumReq: %d, Front: %d, Rear: %d, Count: %d\n", q->bufferSize, q->algo, q->numReq, q->front, q->rear, q->count);
 	printf("Elements in queue\n");
-	for(i = 0; i < q->front; i++) {
+	for(i = 0; i <= q->rear; i++) {
 		printf("%d ", q->qElts[i]);
 	}	
 }
 
-void enqueue(Queue* q, int x) {
+void enqueue(Queue* q, int x, int _fileSize) {
 	printf("Enqueue here\n");
 	if(q->count >= q->bufferSize) {
 		printf("Queue overflow\n");
 	} else {
 		q->rear = q->rear + 1;
 		q->qElts[(q->rear % q->bufferSize)] = x;
+		q->fileSize[(q->rear % q->bufferSize)] = _fileSize;
 		q->count++;
 	}
 }
@@ -69,11 +70,15 @@ int isQueueFull(Queue* q) {
 
 int dequeue(Queue* q) {
 	int x;
+	int fSize;
+	printf("Dequeue here\n");
 	if(isQueueEmpty(q)) {
 		printf("Queue empty\n");
 	} else {
+		printf("Test\n");
 		q->front++;
 		x = q->qElts[(q->front % q->bufferSize)];
+		fSize = q->fileSize[(q->front % q->bufferSize)];
 		return x;
 	}
 	return -1;
@@ -146,6 +151,23 @@ void fifo(Queue* q) {
 }
 
 void sff(Queue* q) {
+	int req;
+	int qFullFlag = 0;
+	pthread_mutex_lock(&lock);
+	while(isQueueEmpty(q)) {
+		pthread_cond_wait(&consumerCV, &lock);	
+	}		
+	if(isQueueFull(q)) {
+		qFullFlag = 1;
+	}
+	req = dequeue(q);
+	printf("Request: %d\n", req);
+	requestHandle(req);
+	Close(req);
+	if(qFullFlag) {
+		pthread_cond_signal(&producerCV);
+	}
+	pthread_mutex_unlock(&lock);
 	
 }
 
@@ -168,8 +190,14 @@ void* handleRequest(void* queue) {
 	return 0;
 }
 
-void processConn(int connFd, Queue* q) {
+void processConn(int connFd, Queue* q, char* algo) {
 	int qEmptyFlag = 0;
+	int fileSize;
+	if(!strcmp(algo, "FIFO")) {
+		fileSize = -1;
+	} else {
+		fileSize = findReqSize(connFd);	
+	}
 	pthread_mutex_lock(&lock);
 	if(isQueueFull(q)) {
 		pthread_cond_wait(&producerCV, &lock);
@@ -177,7 +205,8 @@ void processConn(int connFd, Queue* q) {
 	if(isQueueEmpty(q)) {
 		qEmptyFlag = 1;
 	}
-	enqueue(q, connFd);
+	printf("File Size: %d\n", fileSize);
+	enqueue(q, connFd, fileSize);
 	if(qEmptyFlag) {
 		pthread_cond_signal(&consumerCV);
 	}
@@ -194,48 +223,26 @@ int main(int argc, char *argv[])
 	int i;
 	struct sockaddr_in clientaddr;
 
-	//getargs(&port, argc, argv);
 	temp = getargs(&port, &numThreads, &numBuffers, sAlgo, argc, argv);
 	if(temp >= 0) {
 		numReq = temp;
 	}
 	pthread_t threads[numThreads];
-	/* ------------Test----------------
-	printf("Port: %d, numThreads : %d, numBuffers : %d, Algo : %s", port, numThreads, numBuffers, sAlgo);
-	*/ 
-	// CS537: TODO create some worker threads using pthread_create ...
-	//
-	initializeQueue(&q, sAlgo, numReq);
 
-	
-		
-	
+	initializeQueue(&q, sAlgo, numReq);
 	for(i = 0; i < numThreads; i++) {
 		rc = pthread_create(&threads[i], NULL, handleRequest, (void*)&q);
 		if(rc != 0) {
 			fprintf(stderr, "Thread creation failed\n");
 		}
 	}
-	/*for(i = 0; i < numThreads; i++) {
-		pthread_join(threads[i], NULL);
-	}*/
 	listenfd = Open_listenfd(port);
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-		processConn(connfd, &q);
+		processConn(connfd, &q, sAlgo);
 		// -------------------Printing the queue-------------
 		printQueue(&q);
-
-		// 
-		// CS537: In general, don't handle the request in the main thread.
-		// TODO In multi-threading mode, the main thread needs to
-		// save the relevant info in a buffer and have one of the worker threads
-		// do the work.
-		// 
-		//requestHandle(connfd);
-
-		//Close(connfd);
 	}
 	return 0;
 }
