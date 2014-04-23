@@ -26,6 +26,8 @@ struct Queue_Req {
 	int front;
 	int rear;
 	int count;
+	int isStatic;
+	struct stat sbuf;
 };
 
 void initializeQueue(Queue* q, char* sAlgo, int _numReq) {
@@ -49,7 +51,6 @@ void printQueue(Queue* q) {
 }
 
 void enqueue(Queue* q, int x, int _fileSize) {
-	printf("Enqueue here\n");
 	if(q->count >= q->bufferSize) {
 		printf("Queue overflow\n");
 	} else {
@@ -71,11 +72,9 @@ int isQueueFull(Queue* q) {
 int dequeue(Queue* q) {
 	int x;
 	int fSize;
-	printf("Dequeue here\n");
 	if(isQueueEmpty(q)) {
 		printf("Queue empty\n");
 	} else {
-		printf("Test\n");
 		q->front++;
 		x = q->qElts[(q->front % q->bufferSize)];
 		fSize = q->fileSize[(q->front % q->bufferSize)];
@@ -142,12 +141,12 @@ void fifo(Queue* q) {
 		qFullFlag = 1;
 	}
 	req = dequeue(q);
-	requestHandle(req);
-	Close(req);
 	if(qFullFlag) {
 		pthread_cond_signal(&producerCV);
 	}
 	pthread_mutex_unlock(&lock);
+	requestHandle(req);
+	Close(req);
 }
 
 void sff(Queue* q) {
@@ -161,14 +160,13 @@ void sff(Queue* q) {
 		qFullFlag = 1;
 	}
 	req = dequeue(q);
-	printf("Request: %d\n", req);
-	requestHandle(req);
-	Close(req);
-	if(qFullFlag) {
+		if(qFullFlag) {
 		pthread_cond_signal(&producerCV);
 	}
 	pthread_mutex_unlock(&lock);
-	
+	requestHandle(req);
+	Close(req);
+
 }
 
 void sffbs(Queue* q) {
@@ -196,6 +194,7 @@ void processConn(int connFd, Queue* q, char* algo) {
 	if(!strcmp(algo, "FIFO")) {
 		fileSize = -1;
 	} else {
+		printf("Finding file size\n");
 		fileSize = findReqSize(connFd);	
 	}
 	pthread_mutex_lock(&lock);
@@ -242,7 +241,7 @@ int main(int argc, char *argv[])
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		processConn(connfd, &q, sAlgo);
 		// -------------------Printing the queue-------------
-		printQueue(&q);
+		//printQueue(&q);
 	}
 	return 0;
 }
