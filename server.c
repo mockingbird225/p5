@@ -269,6 +269,7 @@ void sffBs() {
 		pthread_mutex_unlock(&lock);
 		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename);
 		Close(req);
+		sleep(50);
 	}	
 }
 
