@@ -92,7 +92,7 @@ void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _c
 	} else {
 		struct List* prev = NULL;
 		while(temp != NULL && !isInsert) {
-			if(temp1->fileSize <= temp->fileSize) {
+			if(temp1->fileSize < temp->fileSize) {
 				if(prev) {
 					temp1->next = temp;
 					prev->next = temp1;
