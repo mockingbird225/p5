@@ -240,12 +240,13 @@ void sff() {
 			qFullFlag = 1;
 		}
 		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename);
-		Close(req);
-		if(qFullFlag) {
+				if(qFullFlag) {
 			pthread_cond_signal(&producerCV);	
 		}
 		pthread_mutex_unlock(&lock);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename);
+		Close(req);
+
 	}
 }
 
