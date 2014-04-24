@@ -181,6 +181,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
 
 void requestHandleFifo(int fd)
 {
+	printf("In request handle\n");
 	int is_static;
 	struct stat sbuf;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
