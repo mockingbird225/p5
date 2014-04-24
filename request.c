@@ -255,6 +255,7 @@ void findReqSize(int fd, int* isStatic, int* fileSize, int* modeErr, char* cgiar
 	} else {
 		if (!(S_ISREG((_sbuf).st_mode)) || !(S_IXUSR & (_sbuf).st_mode)) {
 	        	*modeErr = 1;
+		*fileSize = 0;
 		}
 	}
 }
