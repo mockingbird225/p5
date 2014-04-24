@@ -21,29 +21,20 @@ pthread_cond_t producerCV = PTHREAD_COND_INITIALIZER;
 
 struct List {
 	int fd;
-	int bufferSize;
 	int fileSize;
 	int isStatic;
-	char* cgiargs;
-	char* method;
-	char* uri;
-	char* version;
-	char* filename;
+	int modeErr;
+	char cgiargs[MAXLINE];
+	char method[MAXLINE];
+	char uri[MAXLINE];
+	char version[MAXLINE];
+	char filename[MAXLINE];
 	struct List* next;
 }*head;
 
 void initializeList() {
 	count = 0;
 	/*q->bufferSize = numBuffers;
-	q->qElts = malloc(sizeof(int)*(q->bufferSize));
-	q->isStatic = malloc(sizeof(int)*(q->bufferSize));
-	q->fileSize = malloc(sizeof(int)*(q->bufferSize));
-	q->cgiargs = malloc(sizeof(char*)*(q->bufferSize));
-	q->method= malloc(sizeof(char*)*(q->bufferSize));
-	q->uri = malloc(sizeof(char*)*(q->bufferSize));
-	q->version = malloc(sizeof(char*)*(q->bufferSize));
-	q->filename= malloc(sizeof(char*)*(q->bufferSize));
-	q->fileMode = malloc(sizeof(mode_t)*(q->bufferSize));
 	q->front = -1;
 	q->rear = -1;
 	q->count = 0;
@@ -80,12 +71,58 @@ void enqueueFifo(int x) {
 	count++;
 }
 
+
+void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename) {
+	struct List* temp = head;
+	int c = 0, isInsert = 0;
+	struct List* temp1 = (struct List*)malloc(sizeof(struct List));
+	temp1->fd = connFd;
+	temp1->isStatic = _isStatic;
+	temp1->fileSize = _fileSize;
+	temp1->modeErr = _modeErr;
+	strcpy(temp1->cgiargs, _cgiargs);
+	strcpy(temp1->method, _method);
+	strcpy(temp1->uri, _uri);
+	strcpy(temp1->version, _version);
+	strcpy(temp1->filename, _filename);
+	if(head == NULL) {
+		head = temp1;
+		head->next = NULL;
+		count++;
+	} else {
+		struct List* prev = NULL;
+		while(temp != NULL && !isInsert) {
+			if(temp1->fileSize <= temp->fileSize) {
+				if(prev) {
+					temp1->next = temp;
+					prev->next = temp1;
+				} else {
+					temp1->next = head;
+					head = temp1;
+				}
+				isInsert = 1;
+				count++;
+				temp = temp->next;
+			} else {
+				prev = temp;
+				temp = temp->next;	
+				c++;
+			}
+		}
+		if(!isInsert && c == count) {
+			prev->next = temp1;
+			temp1->next = NULL;
+			count++;
+		}
+	}
+}
+
 int isListEmpty() {
 	return (count == 0);
 }
 
 int isListFull() {
-	return (count == bufferSize-1);
+	return (count == bufferSize);
 }
 
 int dequeueFifo() {
@@ -100,6 +137,26 @@ int dequeueFifo() {
 	}
 	return -1;
 } 
+
+int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename) {
+	int x;
+	if(isListEmpty()) {
+		printf("List Empty\n");
+	} else {
+		x = head->fd;
+		*_isStatic = head->isStatic;
+		*_fileSize = head->fileSize;
+		*_modeErr = head->modeErr;
+		strcpy(_cgiargs, head->cgiargs);
+		strcpy(_method, head->method);
+		strcpy(_uri, head->uri);
+		strcpy(_version, head->version);
+		strcpy(_filename, head->filename);
+		count--;
+		return x;
+	}
+	return -1;
+}
 
 // CS537: TODO make it parse the new arguments too
 int getargs(int *port, int *numThreads, int* numBuffers, char* sAlgo, int argc, char* argv[]) {
@@ -148,53 +205,57 @@ int getargs(int *port, int *numThreads, int* numBuffers, char* sAlgo, int argc, 
 }*/
 
 void fifo() {
-	int req;
-	int qFullFlag = 0;
-	pthread_mutex_lock(&lock);
-	while(isListEmpty()) {
-		pthread_cond_wait(&consumerCV, &lock);	
-	}		
-	if(isListFull()) {
-		qFullFlag = 1;
-	}
-	req = dequeueFifo();
-	if(qFullFlag) {
-		pthread_cond_signal(&producerCV);
-	}
-	pthread_mutex_unlock(&lock);
-	requestHandleFifo(req);
-	Close(req);
-}
-
-/*void sff(struct List* q) {
-	int req;
-	int qFullFlag = 0;
-	pthread_mutex_lock(&lock);
-	while(isQueueEmpty(q)) {
-		pthread_cond_wait(&consumerCV, &lock);	
-	}		
-	if(isQueueFull(q)) {
-		qFullFlag = 1;
-	}
-	req = dequeue(q);
+	while(1) {
+		int req;
+		int qFullFlag = 0;
+		pthread_mutex_lock(&lock);
+		while(isListEmpty()) {
+			pthread_cond_wait(&consumerCV, &lock);	
+		}		
+		if(isListFull()) {
+			qFullFlag = 1;
+		}
+		req = dequeueFifo();
 		if(qFullFlag) {
-		pthread_cond_signal(&producerCV);
+			pthread_cond_signal(&producerCV);
+		}
+		pthread_mutex_unlock(&lock);
+		requestHandleFifo(req);
+		Close(req);
 	}
-	pthread_mutex_unlock(&lock);
-	requestHandle(req);
-	Close(req);
-
 }
 
-void sffbs(Queue* q) {
-	printf("SFF-BS with %d requests\n", q->numReq);
-}*/
+void sff() {
+	while(1) {
+		int req;
+		int _isStatic, _fileSize, _modeErr;
+		char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE];
+		int qFullFlag = 0;
+		pthread_mutex_lock(&lock);
+		while(isListEmpty()) {
+			pthread_cond_wait(&consumerCV, &lock);
+		}
+		if(isListFull()) {
+			qFullFlag = 1;
+		}
+		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename);
+		Close(req);
+		if(qFullFlag) {
+			pthread_cond_signal(&producerCV);	
+		}
+		pthread_mutex_unlock(&lock);
+	}
+}
 
 void* handleRequest() {
 	//struct List* head = (struct List*)_head;
 	if(!strcmp(sAlgo, "FIFO")) {
 		// First in first out implementation
 		fifo();
+	} else if(!strcmp(sAlgo, "SFF")) {
+		//printf("Thread\n");
+		sff();
 	} 
 	/*else if(!strcmp(q->algo, "SFF")) {
 		//Smallest File First implementation
@@ -207,12 +268,12 @@ void* handleRequest() {
 }
 
 void processConn(int connFd) {
-	int qEmptyFlag = 0, _isStatic, _fileSize;
-	char* _cgiargs, *_method, *_uri, *_version, *_filename, *fileMode;
-	int fileSize;
+	int qEmptyFlag = 0, _isStatic, _fileSize, modeErr = 0;
+	char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE]; 
 	 
 	pthread_mutex_lock(&lock);
 	if(isListFull()) {
+		printf("List is full\n");
 		pthread_cond_wait(&producerCV, &lock);
 	}	
 	if(isListEmpty()) {
@@ -220,6 +281,9 @@ void processConn(int connFd) {
 	}
 	if(!strcmp(sAlgo, "FIFO")) {
 		enqueueFifo(connFd);
+	} else if(!strcmp(sAlgo, "SFF")) {
+		findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
+		enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
 	}
 	if(qEmptyFlag) {
 		pthread_cond_signal(&consumerCV);
@@ -229,11 +293,13 @@ void processConn(int connFd) {
 
 void printList() {
 	struct List* temp = head;
+	printf("-------------List------------\n");
 	while(temp != NULL) {
-		printf("Test\n");
 		printf("Ele: %d\n", temp->fd);
+		printf("File size: %d\n", temp->fileSize);
 		temp = temp->next;
 	}	
+	printf("----------List complete----------\n");
 }
 
 int main(int argc, char *argv[])
