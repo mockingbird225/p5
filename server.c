@@ -14,7 +14,6 @@ char* sAlgo; // 0-FIFO 1-SFF 2-SFF-BS
 int numReq; // Not SFF-BS, then 0;
 int count;
 int bufferSize;
-int countReq;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t consumerCV = PTHREAD_COND_INITIALIZER;
@@ -36,7 +35,6 @@ struct List {
 
 void initializeList() {
 	count = 0;
-	countReq = 0;
 	/*q->bufferSize = numBuffers;
 	q->front = -1;
 	q->rear = -1;
@@ -319,14 +317,12 @@ void processConn(int connFd) {
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
 		} else {
-			if(countReq > numReq-1) {
+			if(count > numReq) {
 				printf("Greater than epoch\n");	
 				pthread_cond_wait(&epochCV, &lock);
-				countReq = 0;
 			}
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
-			countReq++;
 		}
 	}
 	if(qEmptyFlag) {
