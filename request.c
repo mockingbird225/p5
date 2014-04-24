@@ -179,56 +179,24 @@ void requestServeStatic(int fd, char *filename, int filesize)
     
 }
 
-// handle a request
-void requestHandle(int fd)
+void requestHandleFifo(int fd)
 {
-    
-    int is_static;
-    struct stat sbuf;
-    char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
-    char filename[MAXLINE], cgiargs[MAXLINE];
-    rio_t rio;
-    Rio_readinitb(&rio, fd);
-    Rio_readlineb(&rio, buf, MAXLINE);
-    sscanf(buf, "%s %s %s", method, uri, version);
-    printf("%s %s %s\n", method, uri, version);
-    if (strcasecmp(method, "GET")) {
-	requestError(fd, method, "501", "Not Implemented", 
-		     "CS537 Server does not implement this method");
-	return;
-    }
-    requestReadhdrs(&rio);
-    
-    is_static = requestParseURI(uri, filename, cgiargs);
-    if (stat(filename, &sbuf) < 0) {
-	requestError(fd, filename, "404", "Not found", "CS537 Server could not find this file");
-	return;
-    }
-    if (is_static) {
-	if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
-	    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not read this file");
-	    return;
-	}
-	requestServeStatic(fd, filename, sbuf.st_size);
-    } else {
-	if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
-	    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not run this CGI program");
-	    return;
-	}
-	requestServeDynamic(fd, filename, cgiargs);
-    }
-}
-
-int findReqSize(int fd) {
 	int is_static;
 	struct stat sbuf;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
 	char filename[MAXLINE], cgiargs[MAXLINE];
-	rio_t rio1;
-
-	Rio_readinitb(&rio1, fd);
-	Rio_readlineb(&rio1, buf, MAXLINE);
+	rio_t rio;
+	Rio_readinitb(&rio, fd);
+	Rio_readlineb(&rio, buf, MAXLINE);
 	sscanf(buf, "%s %s %s", method, uri, version);
+	printf("%s %s %s\n", method, uri, version);
+	if (strcasecmp(method, "GET")) {
+		requestError(fd, method, "501", "Not Implemented",
+			     "CS537 Server does not implement this method");
+		return;
+	}
+	requestReadhdrs(&rio);
+
 	is_static = requestParseURI(uri, filename, cgiargs);
 	if (stat(filename, &sbuf) < 0) {
 		requestError(fd, filename, "404", "Not found", "CS537 Server could not find this file");
@@ -237,8 +205,66 @@ int findReqSize(int fd) {
 	if (is_static) {
 		if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
 		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not read this file");
+		    return;
 		}
-		return (int)sbuf.st_size;
-	} 
-
+	requestServeStatic(fd, filename, sbuf.st_size);
+	} else {
+		if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
+		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not run this CGI program");
+		    return;
+		}
+		requestServeDynamic(fd, filename, cgiargs);
+	}
 }
+
+
+// handle a request
+/*void findReqSize(int fd, int* isStatic, int* fileSize, char* fileMode, char* cgiargs, char* method, char* uri, char* version, char* filename) {
+	int _isStatic;
+	rio_t rio;
+	struct stat _sbuf;
+	char _filename[MAXLINE], _cgiargs[MAXLINE], _buf[MAXLINE];
+	char _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE];
+	Rio_readinitb(&rio, fd);
+	Rio_readlineb(&rio, _buf, MAXLINE);
+	sscanf(buf, "%s %s %s", _method, _uri, _version);
+	strcpy(method, _method);
+	strcpy(uri, _uri);
+	strcpy(version, _version);
+	if (strcasecmp(method, "GET")) {
+		requestError(fd, method, "501", "Not Implemented", 
+			     "CS537 Server does not implement this method");
+		return;
+	}
+	requestReadhdrs(&rio);
+	isStat = requestParseURI(_uri, _filename, _cgiargs);
+	strcpy(cgiargs, _cgiargs);
+	strcpy(filename, _filename);
+	if (stat(_filename, &_sbuf) < 0) {
+		requestError(fd, filename, "404", "Not found", "CS537 Server could not find this file");
+		return;
+	}
+	isStatic = _isStatic;
+	strcpy(fileMode, (char*)_sbuf.st_mode);
+	if (_isStatic) {
+		if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
+		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not read this file");
+		fileSize = (int)_sbuf.st_size; 
+		}
+	}
+}
+
+void requestHandleSff(int fd, char* filename, char* method, char* uri, char* version, int isStatic, int size, mode_t mode) {
+	printf("%s %s %s\n", method, uri, version);
+
+	if(isStatic) {
+	requestServeStatic(fd, filename, size);
+	} else {
+		if (!(S_ISREG(mode)) || !(S_IXUSR & mode)) {
+		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not run this CGI program");
+		    return;
+		}
+		requestServeDynamic(fd, filename, cgiargs);
+	}
+
+}*/

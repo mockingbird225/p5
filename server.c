@@ -10,75 +10,94 @@
 // Repeatedly handles HTTP requests sent to this port number.
 // Most of the work is done within routines written in request.c
 //
-int numBuffers;
+char* sAlgo; // 0-FIFO 1-SFF 2-SFF-BS
+int numReq; // Not SFF-BS, then 0;
+int count;
+int bufferSize;
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t consumerCV = PTHREAD_COND_INITIALIZER;
 pthread_cond_t producerCV = PTHREAD_COND_INITIALIZER;
 
-
-typedef struct Queue_Req Queue; 
-struct Queue_Req {
-	int *qElts;
+struct List {
+	int fd;
 	int bufferSize;
-	int *fileSize;
-	char* algo; // 0-FIFO 1-SFF 2-SFF-BS
-	int numReq; // Not SFF-BS, then 0;
-	int front;
-	int rear;
-	int count;
+	int fileSize;
 	int isStatic;
-	struct stat sbuf;
+	char* cgiargs;
+	char* method;
+	char* uri;
+	char* version;
+	char* filename;
+	struct List* next;
 };
 
-void initializeQueue(Queue* q, char* sAlgo, int _numReq) {
-	q->bufferSize = numBuffers;
+void initializeList(struct List **head) {
+	*head = (struct List*)malloc(sizeof(struct List));
+	(*head)->next = NULL;
+	count = 0;
+	/*q->bufferSize = numBuffers;
 	q->qElts = malloc(sizeof(int)*(q->bufferSize));
+	q->isStatic = malloc(sizeof(int)*(q->bufferSize));
+	q->fileSize = malloc(sizeof(int)*(q->bufferSize));
+	q->cgiargs = malloc(sizeof(char*)*(q->bufferSize));
+	q->method= malloc(sizeof(char*)*(q->bufferSize));
+	q->uri = malloc(sizeof(char*)*(q->bufferSize));
+	q->version = malloc(sizeof(char*)*(q->bufferSize));
+	q->filename= malloc(sizeof(char*)*(q->bufferSize));
+	q->fileMode = malloc(sizeof(mode_t)*(q->bufferSize));
 	q->front = -1;
 	q->rear = -1;
 	q->count = 0;
-	q->fileSize = malloc(sizeof(int)*(q->bufferSize));
 	q->algo = sAlgo;
 	q->numReq = _numReq;
+	*/
 }
 
-void printQueue(Queue* q) {
+/*void printQueue(Queue* q) {
 	int i;
 	printf("BufferSize: %d, Algo: %s, NumReq: %d, Front: %d, Rear: %d, Count: %d\n", q->bufferSize, q->algo, q->numReq, q->front, q->rear, q->count);
 	printf("Elements in queue\n");
 	for(i = 0; i <= q->rear; i++) {
-		printf("%d ", q->qElts[i]);
+		printf("Elt: %d fileSize: %d, filename : %s\n ", q->qElts[i], q->fileSize[i], q->filename[i]);
 	}	
-}
+}*/
 
-void enqueue(Queue* q, int x, int _fileSize) {
-	if(q->count >= q->bufferSize) {
-		printf("Queue overflow\n");
-	} else {
-		q->rear = q->rear + 1;
-		q->qElts[(q->rear % q->bufferSize)] = x;
-		q->fileSize[(q->rear % q->bufferSize)] = _fileSize;
-		q->count++;
+void enqueueFifo(struct List* head, int x) {
+	struct List* temp = head;
+	while(temp->next != NULL) {
+		temp = temp->next;
 	}
+	temp->next = (struct List*)malloc(sizeof(struct List));
+	temp = temp->next;
+	temp->fd = x;
+	temp->next = NULL;
+	count++;
 }
 
-int isQueueEmpty(Queue *q) {
-	return (q->front == q->rear);
+int isListEmpty() {
+	return (count == 0);
 }
 
-int isQueueFull(Queue* q) {
-	return ((q->rear - q->bufferSize) == q->front);
+int isListFull() {
+	return (count == bufferSize);
 }
 
-int dequeue(Queue* q) {
+int dequeueFifo(struct List* head) {
 	int x;
-	int fSize;
-	if(isQueueEmpty(q)) {
-		printf("Queue empty\n");
+	if(isListEmpty()) {
+		printf("List empty\n");
 	} else {
-		q->front++;
-		x = q->qElts[(q->front % q->bufferSize)];
-		fSize = q->fileSize[(q->front % q->bufferSize)];
-		return x;
+		struct List * ptr = malloc(sizeof(struct List));
+		if(head->next)
+		{
+			x = (head->next)->fd;
+			ptr = head->next;
+			head->next = head->next->next;
+			free(ptr);
+			count--;
+			return x;
+		}
 	}
 	return -1;
 } 
@@ -130,26 +149,26 @@ int getargs(int *port, int *numThreads, int* numBuffers, char* sAlgo, int argc, 
 	*port = atoi(argv[1]);
 }*/
 
-void fifo(Queue* q) {
+void fifo(struct List* head) {
 	int req;
 	int qFullFlag = 0;
 	pthread_mutex_lock(&lock);
-	while(isQueueEmpty(q)) {
+	while(isListEmpty()) {
 		pthread_cond_wait(&consumerCV, &lock);	
 	}		
-	if(isQueueFull(q)) {
+	if(isListFull()) {
 		qFullFlag = 1;
 	}
-	req = dequeue(q);
+	req = dequeueFifo(head);
 	if(qFullFlag) {
 		pthread_cond_signal(&producerCV);
 	}
 	pthread_mutex_unlock(&lock);
-	requestHandle(req);
+	requestHandleFifo(req);
 	Close(req);
 }
 
-void sff(Queue* q) {
+/*void sff(struct List* q) {
 	int req;
 	int qFullFlag = 0;
 	pthread_mutex_lock(&lock);
@@ -171,66 +190,81 @@ void sff(Queue* q) {
 
 void sffbs(Queue* q) {
 	printf("SFF-BS with %d requests\n", q->numReq);
-}
+}*/
 
-void* handleRequest(void* queue) {
-	Queue* q = (Queue*)queue;
-	if(!strcmp(q->algo, "FIFO")) {
+void* handleRequest(void* _head) {
+	struct List* head = (struct List*)_head;
+	if(!strcmp(sAlgo, "FIFO")) {
 		// First in first out implementation
-		fifo(q);
-	} else if(!strcmp(q->algo, "SFF")) {
+		fifo(head);
+	} 
+	/*else if(!strcmp(q->algo, "SFF")) {
 		//Smallest File First implementation
 		sff(q);
 	} else if(!strcmp(q->algo, "SFF-BS")) {
 		// Smallest File first with bounded starvation implementation 
 		sffbs(q);
-	}
+	}*/
 	return 0;
 }
 
-void processConn(int connFd, Queue* q, char* algo) {
-	int qEmptyFlag = 0;
+void processConn(int connFd, struct List* head) {
+	int qEmptyFlag = 0, _isStatic, _fileSize;
+	char* _cgiargs, *_method, *_uri, *_version, *_filename, *fileMode;
 	int fileSize;
-	if(!strcmp(algo, "FIFO")) {
-		fileSize = -1;
-	} else {
+	 
+	/*else {
 		printf("Finding file size\n");
-		fileSize = findReqSize(connFd);	
-	}
+		findReqSize(connFd, isStatic, fileSize, fileMode, _cgiargs, _method, _uri, _version, _filename);	
+	}*/
 	pthread_mutex_lock(&lock);
-	if(isQueueFull(q)) {
+	if(isListFull()) {
 		pthread_cond_wait(&producerCV, &lock);
 	}	
-	if(isQueueEmpty(q)) {
+	if(isListEmpty()) {
 		qEmptyFlag = 1;
 	}
-	printf("File Size: %d\n", fileSize);
-	enqueue(q, connFd, fileSize);
+	if(!strcmp(sAlgo, "FIFO")) {
+		enqueueFifo(head, connFd);
+	}
 	if(qEmptyFlag) {
 		pthread_cond_signal(&consumerCV);
 	}
 	pthread_mutex_unlock(&lock);
 }
 
+void printList(struct List * head)
+{
+	struct List * ptr = head->next;
+	while(ptr)
+	{
+		printf("FD = %d\n",ptr->fd);
+		ptr=ptr->next;
+	}	
+}
+
 int main(int argc, char *argv[])
 {
-	Queue q;
+	struct List* head;
 	int listenfd, connfd, clientlen;
-	int port, numThreads, numReq, temp;
+	int port, numThreads, temp;
 	int rc;
-	char sAlgo[MAX];
+	int _numReq = -1;
+	char algo[MAX];
 	int i;
 	struct sockaddr_in clientaddr;
 
-	temp = getargs(&port, &numThreads, &numBuffers, sAlgo, argc, argv);
+	temp = getargs(&port, &numThreads, &bufferSize, algo, argc, argv);
 	if(temp >= 0) {
-		numReq = temp;
+		_numReq = temp;
 	}
 	pthread_t threads[numThreads];
-
-	initializeQueue(&q, sAlgo, numReq);
+	sAlgo = malloc(sizeof(char)*strlen(algo));
+	strcpy(sAlgo, algo);
+	numReq = _numReq;
+	initializeList(&head);
 	for(i = 0; i < numThreads; i++) {
-		rc = pthread_create(&threads[i], NULL, handleRequest, (void*)&q);
+		rc = pthread_create(&threads[i], NULL, handleRequest, (void*)head);
 		if(rc != 0) {
 			fprintf(stderr, "Thread creation failed\n");
 		}
@@ -239,9 +273,9 @@ int main(int argc, char *argv[])
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-		processConn(connfd, &q, sAlgo);
+		processConn(connfd, &head);
 		// -------------------Printing the queue-------------
-		//printQueue(&q);
+		printList(head);
 	}
 	return 0;
 }
