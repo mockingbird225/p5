@@ -311,8 +311,6 @@ void processConn(int connFd) {
 	} else if(!strcmp(sAlgo, "SFF-BS")) {
 		if(numReq <= 0) {
 			fprintf(stderr, "Error in epoch\n");
-		} else if(numReq == 1) {
-			enqueueFifo(connFd);
 		} else if(numReq >= bufferSize){
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
