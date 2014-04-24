@@ -153,6 +153,7 @@ int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, ch
 		strcpy(_version, head->version);
 		strcpy(_filename, head->filename);
 		count--;
+		head = head->next;
 		return x;
 	}
 	return -1;
