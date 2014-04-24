@@ -14,10 +14,12 @@ char* sAlgo; // 0-FIFO 1-SFF 2-SFF-BS
 int numReq; // Not SFF-BS, then 0;
 int count;
 int bufferSize;
+int countReq;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t consumerCV = PTHREAD_COND_INITIALIZER;
 pthread_cond_t producerCV = PTHREAD_COND_INITIALIZER;
+pthread_cond_t epochCV = PTHREAD_COND_INITIALIZER;
 
 struct List {
 	int fd;
@@ -34,6 +36,7 @@ struct List {
 
 void initializeList() {
 	count = 0;
+	countReq = 0;
 	/*q->bufferSize = numBuffers;
 	q->front = -1;
 	q->rear = -1;
@@ -240,7 +243,7 @@ void sff() {
 			qFullFlag = 1;
 		}
 		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
-				if(qFullFlag) {
+		if(qFullFlag) {
 			pthread_cond_signal(&producerCV);	
 		}
 		pthread_mutex_unlock(&lock);
@@ -248,6 +251,27 @@ void sff() {
 		Close(req);
 
 	}
+}
+
+void sffBs() {
+	while(1) {
+		int req;
+		int _isStatic, _fileSize, _modeErr;
+		char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE];
+
+		pthread_mutex_lock(&lock);
+		if(isListEmpty()) {
+			pthread_mutex_wait(&consumerCV, &lock);
+		}
+		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
+		if(count == 0) {
+			pthread_cond_signal(&epochCV);
+		}	
+		pthread_cond_signal(&producerCV);
+		pthread_mutex_unlock(&lock);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename);
+		Close(req);
+	}	
 }
 
 void* handleRequest() {
@@ -259,10 +283,10 @@ void* handleRequest() {
 		//printf("Thread\n");
 		sff();
 	} 
-	/*else if(!strcmp(q->algo, "SFF")) {
+	else if(!strcmp(sAlgo, "SFF-BS")) {
 		//Smallest File First implementation
-		sff(q);
-	} else if(!strcmp(q->algo, "SFF-BS")) {
+		sffBs();
+	} /*`else if(!strcmp(q->algo, "SFF-BS")) {
 		// Smallest File first with bounded starvation implementation 
 		sffbs(q);
 	}*/
@@ -286,6 +310,24 @@ void processConn(int connFd) {
 	} else if(!strcmp(sAlgo, "SFF")) {
 		findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 		enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
+	} else if(!strcmp(sAlgo, "SFF-BS")) {
+		if(numReq <= 0) {
+			fprintf(stderr, "Error in epoch\n");
+		} else if(numReq == 1) {
+			enqueueFifo(connFd);
+		} else if(numReq >= bufferSize){
+			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
+			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
+		} else {
+			if(countReq > numReq-1) {
+				printf("Greater than epoch\n");	
+				pthread_cond_wait(&epochCV, &lock);
+				countReq = 0;
+			}
+			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
+			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
+			countReq++;
+		}
 	}
 	if(qEmptyFlag) {
 		pthread_cond_signal(&consumerCV);
