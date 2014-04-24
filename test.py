@@ -1,5 +1,6 @@
 import sys
 import os
 
-cmd = "python testcases/test%s.py"%(sys.argv[1]);
-os.system(cmd);
+for x in range(1,11):
+	cmd = "python testcases/test%s.py"%(x);#(sys.argv[1]);
+	os.system(cmd);

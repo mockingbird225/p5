@@ -269,7 +269,6 @@ void sffBs() {
 		pthread_mutex_unlock(&lock);
 		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename);
 		Close(req);
-		sleep(50);
 	}	
 }
 
@@ -311,13 +310,13 @@ void processConn(int connFd) {
 		enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
 	} else if(!strcmp(sAlgo, "SFF-BS")) {
 		if(numReq <= 0) {
-			fprintf(stderr, "Error in epoch\n");
+			//fprintf(stderr, "Error in epoch\n");
 		} else if(numReq >= bufferSize){
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
 		} else {
-			if(count > numReq) {
-				printf("Greater than epoch\n");	
+			if(count >= numReq) {
+				//printf("Greater than epoch\n");	
 				pthread_cond_wait(&epochCV, &lock);
 			}
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
@@ -364,7 +363,7 @@ int main(int argc, char *argv[])
 	for(i = 0; i < numThreads; i++) {
 		rc = pthread_create(&threads[i], NULL, handleRequest, NULL);
 		if(rc != 0) {
-			fprintf(stderr, "Thread creation failed\n");
+			//fprintf(stderr, "Thread creation failed\n");
 		}
 	}
 	listenfd = Open_listenfd(port);
