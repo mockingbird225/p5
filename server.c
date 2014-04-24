@@ -261,7 +261,7 @@ void sffBs() {
 
 		pthread_mutex_lock(&lock);
 		if(isListEmpty()) {
-			pthread_mutex_wait(&consumerCV, &lock);
+			pthread_cond_wait(&consumerCV, &lock);
 		}
 		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
 		if(count == 0) {
