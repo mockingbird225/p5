@@ -115,6 +115,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs)
 	/* CS537: Your statistics go here -- fill in the 0's with something useful! */
 	sprintf(buf, "%s Stat-req-arrival: %d\r\n", buf, (int)statReqArrival);
 	sprintf(buf, "%s Stat-req-dispatch: %d\r\n", buf, (int)statReqDispatch);
+	sprintf(buf, "%s Stat-req-age: %d\r\n", buf, age);
 	sprintf(buf, "%s Stat-thread-id: %d\r\n", buf, thdId);
 	sprintf(buf, "%s Stat-thread-count: %d\r\n", buf, reqHandld);
 	sprintf(buf, "%s Stat-thread-static: %d\r\n", buf, statReq);
@@ -176,6 +177,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
 	sprintf(buf, "%s Stat-req-dispatch: %d\r\n", buf, (int)statReqDispatch);
 	sprintf(buf, "%s Stat-req-read: %d\r\n", buf, (int)statReqRead);
 	sprintf(buf, "%s Stat-req-complete: %d\r\n", buf, (int)statReqComplete);
+	sprintf(buf, "%s Stat-req-age:%d\r\n", buf, age);
 	sprintf(buf, "%s Stat-thread-id: %d\r\n", buf, thdId);
 	sprintf(buf, "%s Stat-thread-count: %d\r\n", buf, reqHandld);
 	sprintf(buf, "%s Stat-thread-static: %d\r\n", buf, statReq);
