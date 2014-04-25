@@ -515,6 +515,7 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 				pthread_cond_signal(&consumerCV);
 			}
 		} else if(tempBuffer < 0) {
+			pthread_cond_signal(&consumerCV);
 			tempBuffer = numReq;
 		}
 	} else {
