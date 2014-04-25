@@ -16,6 +16,7 @@ int count;
 int thdCount;
 int bufferSize;
 int numThreads;
+int tempBuffer;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t thdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -62,6 +63,7 @@ struct ThreadList {
 void initializeList() {
 	count = 0;
 	thdCount = -1;
+	tempBuffer = numReq;
 	/*q->bufferSize = numBuffers;
 	q->front = -1;
 	q->rear = -1;
@@ -540,7 +542,7 @@ int main(int argc, char *argv[])
 	char algo[MAX];
 	int i;
 	struct sockaddr_in clientaddr;
-	time_t statReqArrival;
+	suseconds_t statReqArrival;
 	temp = getargs(&port, &_numThreads, &bufferSize, algo, argc, argv);
 	numThreads = _numThreads;
 	if(temp >= 0) {
@@ -562,7 +564,8 @@ int main(int argc, char *argv[])
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		gettimeofday(&tv, NULL);
-		statReqArrival = (tv.tv_sec)/1000;
+		statReqArrival = (tv.tv_usec)*1000;
+		printf("Time: %f\n",(float)statReqArrival);
 		processConn(connfd, statReqArrival);
 		// -------------------Printing the queue-------------
 		//printList();
