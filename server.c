@@ -13,36 +13,54 @@
 char* sAlgo; // 0-FIFO 1-SFF 2-SFF-BS
 int numReq; // Not SFF-BS, then 0;
 int count;
+int thdCount;
 int bufferSize;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t thdLock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t consumerCV = PTHREAD_COND_INITIALIZER;
 pthread_cond_t producerCV = PTHREAD_COND_INITIALIZER;
 pthread_cond_t epochCV = PTHREAD_COND_INITIALIZER;
 
-struct timeval arrtime;
-int arrflag;
+struct timeval tv;
 
-typedef struct __statistics{
+
+/*typedef struct __statistics{
 	time_t arrival;
 }statistics;
-statistics *stats;
+statistics *stats;*/
+
+time_t statReqDispatch;
+time_t statReqRead;
+time_t statReqComplete;
 
 struct List {
 	int fd;
 	int fileSize;
 	int isStatic;
 	int modeErr;
+	int age;
 	char cgiargs[MAXLINE];
 	char method[MAXLINE];
 	char uri[MAXLINE];
 	char version[MAXLINE];
 	char filename[MAXLINE];
+	time_t statReqArrival;
+
 	struct List* next;
 }*head;
 
+struct ThreadList {
+	int id;
+	int reqHandld;
+	int statReqHandled;
+	int dynReqHandled;
+	struct ThreadList *next
+}*headThd;
+
 void initializeList() {
 	count = 0;
+	thdCount = 0;
 	/*q->bufferSize = numBuffers;
 	q->front = -1;
 	q->rear = -1;
@@ -61,11 +79,22 @@ void initializeList() {
 	}	
 }*/
 
-void enqueueFifo(int x) {
+
+void enqueueFifoNew(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, time_t _statReqArrival) {
 	struct List* temp;
 	temp = head;
 	struct List* temp1 = (struct List*)malloc(sizeof(struct List));	
-	temp1->fd = x;
+	temp1->fd = connFd;
+	temp1->isStatic = _isStatic;
+	temp1->fileSize = _fileSize;
+	temp1->modeErr = _modeErr;
+	temp1->age = 0;
+	strcpy(temp1->cgiargs, _cgiargs);
+	strcpy(temp1->method, _method);
+	strcpy(temp1->uri, _uri);
+	strcpy(temp1->version, _version);
+	strcpy(temp1->filename, _filename);
+	temp1->statReqArrival = _statReqArrival;
 
 	if(head == NULL) {
 		head = temp1;
@@ -80,8 +109,56 @@ void enqueueFifo(int x) {
 	count++;
 }
 
+/*void enqueueFifo(int x, time_t _statReqArrival) {
+	struct List* temp;
+	temp = head;
+	struct List* temp1 = (struct List*)malloc(sizeof(struct List));	
+	temp1->fd = x;
+	temp1->statReqArrival = _statReqArrival;
+	temp1->age = 0;
 
-void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename) {
+	if(head == NULL) {
+		head = temp1;
+		head->next = NULL;
+	} else {
+		while(temp->next != NULL) {
+			temp = temp->next;
+		}
+		temp1->next = NULL;
+		temp->next = temp1;
+	}
+	count++;
+}*/
+
+void insertThdList(int thdCount) {
+	struct ThreadList* temp;
+	temp = headThd;
+	struct ThreadList* temp1 = (struct ThreadList*)malloc(sizeof(struct ThreadList));
+	temp1->id = thdCount;
+	temp1->reqHandld = 0;
+	temp1->statReqHandled = 0;
+	temp1->dynReqHandled = 0;
+	temp1->next = NULL;
+
+	if(headThd == NULL) {
+		headThd = temp1;
+	} else {
+		while(temp->next != NULL) {
+			temp = temp->next;
+		}
+		temp->next = temp1;
+	}
+}
+
+void updateAge(struct List* temp) {
+	temp = temp-> next;
+	while(temp != NULL) {
+		temp->age++;
+		temp = temp->next;
+	}
+}
+
+void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, time_t _statReqArrival) {
 	struct List* temp = head;
 	int c = 0, isInsert = 0;
 	struct List* temp1 = (struct List*)malloc(sizeof(struct List));
@@ -89,11 +166,13 @@ void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _c
 	temp1->isStatic = _isStatic;
 	temp1->fileSize = _fileSize;
 	temp1->modeErr = _modeErr;
+	temp1->age = 0;
 	strcpy(temp1->cgiargs, _cgiargs);
 	strcpy(temp1->method, _method);
 	strcpy(temp1->uri, _uri);
 	strcpy(temp1->version, _version);
 	strcpy(temp1->filename, _filename);
+	temp1->statReqArrival = _statReqArrival;
 	if(head == NULL) {
 		head = temp1;
 		head->next = NULL;
@@ -111,6 +190,7 @@ void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _c
 				}
 				isInsert = 1;
 				count++;
+				updateAge(temp1);
 				temp = temp->next;
 			} else {
 				prev = temp;
@@ -134,20 +214,35 @@ int isListFull() {
 	return (count == bufferSize);
 }
 
-int dequeueFifo() {
+/*int dequeueFifo(time_t* _statReqArrival, int* _age) {
 	int x;
 	if(isListEmpty()) {
 		printf("List empty\n");
 	} else {
 		x = head->fd;
+		_statReqArrival = head->statReqArrival;
+		_age = head->age;
 		head = head->next;
 		count--;
 		return x;
 	}
 	return -1;
-} 
+} */
 
-int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename) {
+
+void dequeueThdList(int thdCount, int* _reqHandld, int* _statReq, int* _dynReq) {
+	struct ThreadList* temp = headThd;
+	while(temp != NULL) {
+		if(temp->id == thdCount) {
+			*_reqHandld = temp->reqHandld;
+			*_statReq = temp->statReqHandled;
+			*_dynReq = temp->dynReqHandled;
+		}
+	}
+}
+
+
+int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, time_t* _statReqArrival, int* _age) {
 	int x;
 	if(isListEmpty()) {
 		printf("List Empty\n");
@@ -161,6 +256,8 @@ int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, ch
 		strcpy(_uri, head->uri);
 		strcpy(_version, head->version);
 		strcpy(_filename, head->filename);
+		_statReqArrival = head->statReqArrival;
+		_age = head->age;
 		count--;
 		head = head->next;
 		return x;
@@ -214,9 +311,40 @@ int getargs(int *port, int *numThreads, int* numBuffers, char* sAlgo, int argc, 
 	*port = atoi(argv[1]);
 }*/
 
-void fifo() {
+
+void updateThdListFifo(int _id) {
+	struct ThreadList* temp = headThd;
+	while(temp != NULL) {
+		if(temp->id == _id) {
+			temp->reqHandld++;	
+		}
+		temp = temp->next;
+	}
+}
+
+void updateThdListSff(int _id, int _isStatic) {
+	struct ThreadList* temp = headThd;
+	while(temp != NULL) {
+		if(temp->id == _id) {
+			temp->reqHandld++;
+			if(_isStatic) {
+				temp->statReqHandled++;
+			} else {
+				temp->dynReqHandled++;
+			}
+		}
+	}
+}
+
+/*void fifo(int thdId) {
+	time_t _statReqArrival, statReqPick;
+	int age;
 	while(1) {
 		int req;
+		int _isStatic, _fileSize, _modeErr;
+		char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE];
+		int staticReq, dynReq, reqHandld;
+
 		int qFullFlag = 0;
 		pthread_mutex_lock(&lock);
 		while(isListEmpty()) {
@@ -225,17 +353,26 @@ void fifo() {
 		if(isListFull()) {
 			qFullFlag = 1;
 		}
-		req = dequeueFifo();
+		//req = dequeueFifo(&(_statReqArrival), &(_age));
+		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename, &(_statReqArrival), &(_age));
+		//updateThdListFifo(_thdId);
+		updateThdListSff(thdCount, _isStatic);
+		gettimeofday(&tv, NULL);
+		statReqPick = (tv.tv_sec)/1000;
+		statReqDispatch = statReqPick - _statReqArrival;	
 		if(qFullFlag) {
 			pthread_cond_signal(&producerCV);
 		}
 		pthread_mutex_unlock(&lock);
-		requestHandleFifo(req, arrtime.tv_sec);
+		//requestHandleFifo(req, _statReqArrival, statReqDispatch, _age);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age);
 		Close(req);
 	}
-}
+}*/
 
-void sff() {
+/*void sffBs(int thdCount) {
+	time_t _statReqArrival, statReqDispatch;
+	int _age;
 	while(1) {
 		int req;
 		int _isStatic, _fileSize, _modeErr;
@@ -248,50 +385,66 @@ void sff() {
 		if(isListFull()) {
 			qFullFlag = 1;
 		}
-		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
+		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename, &(_statReqArrival), &(_age));
+		updateThdListSff(thdCount, _isStatic);
+		gettimeofday(&tv, NULL);
+		statReqPick = (tv.tv_sec)/1000;
+		statReqDispatch = statReqPick - _statReqArrival;	
 		if(qFullFlag) {
 			pthread_cond_signal(&producerCV);	
 		}
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, arrtime.tv_sec);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age);
 		Close(req);
 
 	}
-}
+}*/
 
-void sffBs() {
+void sff(int thdCount) {
+	time_t _statReqArrival, statReqDispatch, statReqPick;
+	int _age;
 	while(1) {
 		int req;
 		int _isStatic, _fileSize, _modeErr;
 		char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE];
+		int staticReq, dynReq, reqHandld;
 
 		pthread_mutex_lock(&lock);
 		if(isListEmpty()) {
 			pthread_cond_wait(&consumerCV, &lock);
 		}
-		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename);
+		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename, &(_statReqArrival), &(_age));
+		updateThdListSff(thdCount, _isStatic);
+		dequeueThdList(thdCount, &reqHandld, &staticReq, &dynReq);
+		gettimeofday(&tv, NULL);
+		statReqPick = (tv.tv_sec)/1000;
+		statReqDispatch = statReqPick - _statReqArrival;	
 		if(count == 0) {
 			pthread_cond_signal(&epochCV);
 		}	
 		pthread_cond_signal(&producerCV);
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, arrtime.tv_sec);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHandld, staticReq, dynReq);
 		Close(req);
 	}	
 }
 
 void* handleRequest() {
+	pthread_mutex_lock(&thdLock);
+	thdCount++;
+	insertThdList(thdCount);
+	pthread_mutex_unlock(&thdLock);
 	//struct List* head = (struct List*)_head;
 	if(!strcmp(sAlgo, "FIFO")) {
 		// First in first out implementation
-		fifo();
+		sff(thdCount);
 	} else if(!strcmp(sAlgo, "SFF")) {
 		//printf("Thread\n");
-		sff();
+		sff(thdCount);
 	} 
 	else if(!strcmp(sAlgo, "SFF-BS")) {
 		//Smallest File First implementation
-		sffBs();
+		sff(thdCount);
 	} /*`else if(!strcmp(q->algo, "SFF-BS")) {
 		// Smallest File first with bounded starvation implementation 
 		sffbs(q);
@@ -299,7 +452,7 @@ void* handleRequest() {
 	return 0;
 }
 
-void processConn(int connFd) {
+void processConn(int connFd, time_t _statReqArrival) {
 	int qEmptyFlag = 0, _isStatic, _fileSize, modeErr = 0;
 	char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE]; 
 	 
@@ -312,23 +465,26 @@ void processConn(int connFd) {
 		qEmptyFlag = 1;
 	}
 	if(!strcmp(sAlgo, "FIFO")) {
-		enqueueFifo(connFd);
+		findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
+		//enqueueFifo(connFd, _statReqArrival);
+		enqueueFifoNew(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 	} else if(!strcmp(sAlgo, "SFF")) {
 		findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
-		enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
+		enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 	} else if(!strcmp(sAlgo, "SFF-BS")) {
 		if(numReq <= 0) {
-			//fprintf(stderr, "Error in epoch\n");
+			fprintf(stderr, "Epoch size should be greater than zero\n");
+			exit(1);
 		} else if(numReq >= bufferSize){
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
-			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
+			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 		} else {
 			if(count >= numReq) {
 				//printf("Greater than epoch\n");	
 				pthread_cond_wait(&epochCV, &lock);
 			}
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
-			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename);
+			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 		}
 	}
 	if(qEmptyFlag) {
@@ -351,8 +507,7 @@ void printList() {
 int main(int argc, char *argv[])
 {
 	head = NULL;
-	stats = malloc(sizeof(statistics));
-	arrflag = 0;
+	headThd = NULL;
 	int listenfd, connfd, clientlen;
 	int port, numThreads, temp;
 	int rc;
@@ -360,7 +515,7 @@ int main(int argc, char *argv[])
 	char algo[MAX];
 	int i;
 	struct sockaddr_in clientaddr;
-
+	time_t statReqArrival;
 	temp = getargs(&port, &numThreads, &bufferSize, algo, argc, argv);
 	if(temp >= 0) {
 		_numReq = temp;
@@ -380,10 +535,10 @@ int main(int argc, char *argv[])
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-		if(!arrflag)
-			gettimeofday(&arrtime,0);
+		gettimeofday(&tv, NULL);
+		statReqArrival = (tv.tv_sec)/1000;
 		
-		processConn(connfd);
+		processConn(connfd, statReqArrival);
 		// -------------------Printing the queue-------------
 		//printList();
 	}
