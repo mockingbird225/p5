@@ -5,10 +5,10 @@
 #include "cs537.h"
 #include "request.h"
 
-time_t statReqArrival;
-time_t statReqDispatch;
-time_t statReqRead;
-time_t statReqComplete;
+suseconds_t statReqArrival;
+suseconds_t statReqDispatch;
+suseconds_t statReqRead;
+suseconds_t statReqComplete;
 struct timeval tv;
 int age;
 int thdId, reqHandld, statReq, dynReq;
@@ -140,11 +140,11 @@ void requestServeStatic(int fd, char *filename, int filesize)
 	char *srcp, filetype[MAXLINE], buf[MAXBUF];
 	char tmp = 0;
 	int i;
-	time_t start, finish, finishWrite;
+	suseconds_t start, finish, finishWrite;
 	requestGetFiletype(filename, filetype);
 	
 	gettimeofday(&tv, NULL);
-	start = (tv.tv_sec)/1000;
+	start = (tv.tv_usec)*1000;
 	srcfd = Open(filename, O_RDONLY, 0);
 
 	// Rather than call read() to read the file into memory, 
@@ -163,14 +163,14 @@ void requestServeStatic(int fd, char *filename, int filesize)
 	tmp += *(srcp + i);
 	}
 	gettimeofday(&tv, NULL);
-	finish = (tv.tv_sec)/1000;
+	finish = (tv.tv_usec)*1000;
 	statReqRead = finish-start;
 
 	sprintf(buf, "HTTP/1.0 200 OK\r\n");
 	sprintf(buf, "%s Server: CS537 Web Server\r\n", buf);
 
 	gettimeofday(&tv, NULL);
-	finishWrite = (tv.tv_sec)/1000;	
+	finishWrite = (tv.tv_usec)*1000;	
 	statReqComplete = finishWrite-statReqArrival;
 	// CS537: Your statistics go here -- fill in the 0's with something useful!
 	sprintf(buf, "%s Stat-req-arrival: %d\r\n", buf, (int)statReqArrival);
@@ -194,7 +194,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
 
 }
 
-void requestHandleFifo(int fd, time_t _statReqArrival, time_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq)
+void requestHandleFifo(int fd, suseconds_t _statReqArrival, suseconds_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq)
 {
 	int is_static;
 	struct stat sbuf;
@@ -281,7 +281,7 @@ void findReqSize(int fd, int* isStatic, int* fileSize, int* modeErr, char* cgiar
 	}
 }
 
-void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* cgiargs, char* method, char* uri, char* version, char* filename,time_t _statReqArrival, time_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq) {
+void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* cgiargs, char* method, char* uri, char* version, char* filename,suseconds_t _statReqArrival, suseconds_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq) {
 	printf("%s %s %s\n", method, uri, version);
 
 	statReqArrival = _statReqArrival;
