@@ -60,7 +60,7 @@ struct ThreadList {
 
 void initializeList() {
 	count = 0;
-	thdCount = 0;
+	thdCount = -1;
 	/*q->bufferSize = numBuffers;
 	q->front = -1;
 	q->rear = -1;
@@ -238,6 +238,7 @@ void dequeueThdList(int thdCount, int* _reqHandld, int* _statReq, int* _dynReq) 
 			*_statReq = temp->statReqHandled;
 			*_dynReq = temp->dynReqHandled;
 		}
+		temp = temp->next;
 	}
 }
 
@@ -333,6 +334,7 @@ void updateThdListSff(int _id, int _isStatic) {
 				temp->dynReqHandled++;
 			}
 		}
+		temp = temp->next;
 	}
 }
 
@@ -541,7 +543,6 @@ int main(int argc, char *argv[])
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		gettimeofday(&tv, NULL);
 		statReqArrival = (tv.tv_sec)/1000;
-		
 		processConn(connfd, statReqArrival);
 		// -------------------Printing the queue-------------
 		//printList();
