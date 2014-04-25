@@ -19,7 +19,9 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t consumerCV = PTHREAD_COND_INITIALIZER;
 pthread_cond_t producerCV = PTHREAD_COND_INITIALIZER;
 pthread_cond_t epochCV = PTHREAD_COND_INITIALIZER;
+
 struct timeval arrtime;
+int arrflag;
 
 typedef struct __statistics{
 	time_t arrival;
@@ -228,7 +230,7 @@ void fifo() {
 			pthread_cond_signal(&producerCV);
 		}
 		pthread_mutex_unlock(&lock);
-		requestHandleFifo(req, stats->arrival);
+		requestHandleFifo(req, arrtime.tv_sec);
 		Close(req);
 	}
 }
@@ -251,7 +253,7 @@ void sff() {
 			pthread_cond_signal(&producerCV);	
 		}
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, stats->arrival);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, arrtime.tv_sec);
 		Close(req);
 
 	}
@@ -273,7 +275,7 @@ void sffBs() {
 		}	
 		pthread_cond_signal(&producerCV);
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, stats->arrival);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, arrtime.tv_sec);
 		Close(req);
 	}	
 }
@@ -350,7 +352,7 @@ int main(int argc, char *argv[])
 {
 	head = NULL;
 	stats = malloc(sizeof(statistics));
-	stats->arrival = 0;
+	arrflag = 0;
 	int listenfd, connfd, clientlen;
 	int port, numThreads, temp;
 	int rc;
@@ -378,11 +380,9 @@ int main(int argc, char *argv[])
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-		if(stats->arrival == 0)
-		{
+		if(!arrflag)
 			gettimeofday(&arrtime,0);
-			stats->arrival = arrtime.tv_sec;
-		}
+		
 		processConn(connfd);
 		// -------------------Printing the queue-------------
 		//printList();
