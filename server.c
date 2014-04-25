@@ -257,8 +257,8 @@ int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, ch
 		strcpy(_uri, head->uri);
 		strcpy(_version, head->version);
 		strcpy(_filename, head->filename);
-		_statReqArrival = head->statReqArrival;
-		_age = head->age;
+		*_statReqArrival = head->statReqArrival;
+		*_age = head->age;
 		count--;
 		head = head->next;
 		return x;
@@ -334,6 +334,14 @@ void updateThdListSff(int _id, int _isStatic) {
 				temp->dynReqHandled++;
 			}
 		}
+		temp = temp->next;
+	}
+}
+
+void updateAgeFifo() {
+	struct List* temp = head;
+	while(temp != NULL) {
+		temp->age++;
 		temp = temp->next;
 	}
 }
@@ -416,6 +424,9 @@ void sff(int thdCount) {
 			pthread_cond_wait(&consumerCV, &lock);
 		}
 		req = dequeueSff(&(_isStatic), &(_fileSize), &(_modeErr), _cgiargs, _method, _uri, _version, _filename, &(_statReqArrival), &(_age));
+		if(!strcmp(sAlgo, "FIFO")) {
+			updateAgeFifo();
+		}
 		updateThdListSff(thdCount, _isStatic);
 		dequeueThdList(thdCount, &reqHandld, &staticReq, &dynReq);
 		gettimeofday(&tv, NULL);
