@@ -432,6 +432,10 @@ void sff(int thdCount) {
 void* handleRequest() {
 	pthread_mutex_lock(&thdLock);
 	thdCount++;
+	if(thdCount > bufferSize) {
+		fprintf(stderr, "Something wrong! Number of threads exceeds buffersize\n");
+		exit(1);
+	}
 	insertThdList(thdCount);
 	pthread_mutex_unlock(&thdLock);
 	//struct List* head = (struct List*)_head;
