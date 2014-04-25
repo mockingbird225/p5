@@ -506,13 +506,16 @@ void processConn(int connFd, time_t _statReqArrival) {
 			}
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+			tempBuffer--;
 		}
 	}
 	if(!strcmp(sAlgo, "SFF-BS")) {
-		if(count == numReq) {
+		if(count == numReq || tempBuffer >= 0) {
 			for(i = 0; i <numThreads; i++) {
 				pthread_cond_signal(&consumerCV);
 			}
+		} else if(tempBuffer < 0) {
+			tempBuffer = numReq;
 		}
 	} else {
 		pthread_cond_signal(&consumerCV);
