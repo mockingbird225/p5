@@ -32,9 +32,9 @@ struct timeval tv;
 }statistics;
 statistics *stats;*/
 
-time_t statReqDispatch;
-time_t statReqRead;
-time_t statReqComplete;
+suseconds_t statReqDispatch;
+suseconds_t statReqRead;
+suseconds_t statReqComplete;
 
 struct List {
 	int fd;
@@ -47,7 +47,7 @@ struct List {
 	char uri[MAXLINE];
 	char version[MAXLINE];
 	char filename[MAXLINE];
-	time_t statReqArrival;
+	suseconds_t statReqArrival;
 
 	struct List* next;
 }*head;
@@ -83,7 +83,7 @@ void initializeList() {
 }*/
 
 
-void enqueueFifoNew(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, time_t _statReqArrival) {
+void enqueueFifoNew(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
 	struct List* temp;
 	temp = head;
 	struct List* temp1 = (struct List*)malloc(sizeof(struct List));	
@@ -161,7 +161,7 @@ void updateAge(struct List* temp) {
 	}
 }
 
-void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, time_t _statReqArrival) {
+void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
 	struct List* temp = head;
 	int c = 0, isInsert = 0;
 	struct List* temp1 = (struct List*)malloc(sizeof(struct List));
@@ -246,7 +246,7 @@ void dequeueThdList(int thdCount, int* _reqHandld, int* _statReq, int* _dynReq) 
 }
 
 
-int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, time_t* _statReqArrival, int* _age) {
+int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, suseconds_t* _statReqArrival, int* _age) {
 	int x;
 	if(isListEmpty()) {
 		printf("List Empty\n");
@@ -414,7 +414,7 @@ void updateAgeFifo() {
 }*/
 
 void sff(int thdCount) {
-	time_t _statReqArrival, statReqDispatch, statReqPick;
+	suseconds_t _statReqArrival, statReqDispatch, statReqPick;
 	int _age;
 	while(1) {
 		int req;
@@ -433,7 +433,7 @@ void sff(int thdCount) {
 		updateThdListSff(thdCount, _isStatic);
 		dequeueThdList(thdCount, &reqHandld, &staticReq, &dynReq);
 		gettimeofday(&tv, NULL);
-		statReqPick = (tv.tv_sec)/1000;
+		statReqPick = (tv.tv_usec)*1000;
 		statReqDispatch = statReqPick - _statReqArrival;	
 		if(count == 0) {
 			pthread_cond_signal(&epochCV);
@@ -472,7 +472,7 @@ void* handleRequest() {
 	return 0;
 }
 
-void processConn(int connFd, time_t _statReqArrival) {
+void processConn(int connFd, suseconds_t _statReqArrival) {
 	int i;
 	int qEmptyFlag = 0, _isStatic, _fileSize, modeErr = 0;
 	char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE]; 
