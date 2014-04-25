@@ -127,7 +127,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs)
 }
 
 
-void requestServeStatic(int fd, char *filename, int filesize) 
+void requestServeStatic(int fd, char *filename, int filesize, time_t arrival) 
 {
     int srcfd;
     char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -159,7 +159,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
     sprintf(buf, "%s Server: CS537 Web Server\r\n", buf);
     
     // CS537: Your statistics go here -- fill in the 0's with something useful!
-    sprintf(buf, "%s Stat-req-arrival: %d\r\n", buf, 0);
+    sprintf(buf, "%s Stat-req-arrival: %d\r\n", buf, (int)arrival);
     sprintf(buf, "%s Stat-req-dispatch: %d\r\n", buf, 0);
     sprintf(buf, "%s Stat-req-read: %d\r\n", buf, 0);
     sprintf(buf, "%s Stat-req-complete: %d\r\n", buf, 0);
@@ -179,7 +179,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
     
 }
 
-void requestHandleFifo(int fd)
+void requestHandleFifo(int fd, time_t arrival)
 {
 	int is_static;
 	struct stat sbuf;
@@ -207,7 +207,7 @@ void requestHandleFifo(int fd)
 		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not read this file");
 		    return;
 		}
-	requestServeStatic(fd, filename, sbuf.st_size);
+	requestServeStatic(fd, filename, sbuf.st_size, arrival);
 	} else {
 		if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
 		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not run this CGI program");
@@ -259,11 +259,11 @@ void findReqSize(int fd, int* isStatic, int* fileSize, int* modeErr, char* cgiar
 	}
 }
 
-void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* cgiargs, char* method, char* uri, char* version, char* filename) {
+void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* cgiargs, char* method, char* uri, char* version, char* filename, time_t arrival) {
 	printf("%s %s %s\n", method, uri, version);
 
 	if(isStatic) {
-		requestServeStatic(fd, filename, fileSize);
+		requestServeStatic(fd, filename, fileSize, arrival);
 	} else {
 		if (modeError) {
 		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not run this CGI program");
