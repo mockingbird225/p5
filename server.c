@@ -504,7 +504,11 @@ void processConn(int connFd, time_t _statReqArrival) {
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 		}
 	}
-	if(qEmptyFlag) {
+	if(!strcmp(sAlgo, "SFF-BS")) {
+		if(count == numReq) {
+			pthread_cond_signal(&consumerCV);
+		}
+	} else {
 		pthread_cond_signal(&consumerCV);
 	}
 	pthread_mutex_unlock(&lock);
