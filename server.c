@@ -504,7 +504,7 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 			tempBuffer--;
-			if(tempBuffer == 0) {
+			if(tempBuffer < 0) {
 				//printf("Greater than epoch\n");	
 				pthread_cond_wait(&epochCV, &lock);
 			}
@@ -513,7 +513,8 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 	if(!strcmp(sAlgo, "SFF-BS")) {
 		if(tempBuffer > 0) {
 			pthread_cond_signal(&consumerCV);
-		} else if(tempBuffer == 0) {
+		} else if(tempBuffer <= 0) {
+			pthread_cond_signal(&consumerCV);
 			tempBuffer = numReq;
 		}
 	} else {
