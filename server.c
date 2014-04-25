@@ -15,6 +15,7 @@ int numReq; // Not SFF-BS, then 0;
 int count;
 int thdCount;
 int bufferSize;
+int numThreads;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t thdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -470,6 +471,7 @@ void* handleRequest() {
 }
 
 void processConn(int connFd, time_t _statReqArrival) {
+	int i;
 	int qEmptyFlag = 0, _isStatic, _fileSize, modeErr = 0;
 	char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE]; 
 	 
@@ -506,7 +508,9 @@ void processConn(int connFd, time_t _statReqArrival) {
 	}
 	if(!strcmp(sAlgo, "SFF-BS")) {
 		if(count == numReq) {
-			pthread_cond_signal(&consumerCV);
+			for(i = 0; i <numThreads; i++) {
+				pthread_cond_signal(&consumerCV);
+			}
 		}
 	} else {
 		pthread_cond_signal(&consumerCV);
@@ -530,14 +534,15 @@ int main(int argc, char *argv[])
 	head = NULL;
 	headThd = NULL;
 	int listenfd, connfd, clientlen;
-	int port, numThreads, temp;
+	int port, _numThreads, temp;
 	int rc;
 	int _numReq = -1;
 	char algo[MAX];
 	int i;
 	struct sockaddr_in clientaddr;
 	time_t statReqArrival;
-	temp = getargs(&port, &numThreads, &bufferSize, algo, argc, argv);
+	temp = getargs(&port, &_numThreads, &bufferSize, algo, argc, argv);
+	numThreads = _numThreads;
 	if(temp >= 0) {
 		_numReq = temp;
 	}
