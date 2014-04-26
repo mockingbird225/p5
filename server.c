@@ -1,6 +1,7 @@
 #include "cs537.h"
 #include "request.h"
 #define MAX 6
+
 // 
 // server.c: A very, very simple web server
 //
@@ -59,7 +60,7 @@ struct ThreadList {
 	int reqHandld;
 	int statReqHandled;
 	int dynReqHandled;
-	struct ThreadList *next
+	struct ThreadList *next;
 }*headThd;
 
 void initializeList() {
@@ -220,13 +221,16 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 	temp1->statReqArrival = _statReqArrival;
 
 	if(head == NULL) {
+		printf("Inserting at head\n");
 		head = temp1;
 		head->next = NULL;
 		count++;
 	} else {
 		if(tempFd == -1) {
+		printf("Inserting in 1st epoch\n");
 			enqueueSffbsNew(&head, &prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 		} else {
+			printf("Inserting in middle epoch\n");
 			while(temp != NULL) {
 				if(temp->fd == tempFd) {
 					if(temp->next) {
@@ -249,10 +253,10 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 	if(numThSoFar%numReq == 0) {
 		int j;
 		struct List * ptr = head;
-		for(j=0;ptr->next && j< (numThSoFar - (numThSoFar%numReq));j++)
+		for(j=0;ptr && j< (numThSoFar - (numThSoFar%numReq));j++)
 		{
-			ptr=ptr->next;
 			tempFd = ptr->fd;
+			ptr=ptr->next;
 		}
 		//tempFd = connFd;
 	}
@@ -433,10 +437,8 @@ void updateThdListSff(int _id, int _isStatic) {
 			temp->reqHandld++;
 			if(_isStatic) {
 				temp->statReqHandled++;
-				printf(" %d\n", temp->statReqHandled);
 			} else {
 				temp->dynReqHandled++;
-				printf(" %d\n", temp->dynReqHandled);
 			}
 		}
 		temp = temp->next;
@@ -670,7 +672,6 @@ int main(int argc, char *argv[])
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		gettimeofday(&tv, NULL);
 		statReqArrival = (tv.tv_usec)*1000;
-		printf("Time: %f\n",(float)statReqArrival);
 		processConn(connfd, statReqArrival);
 		// -------------------Printing the queue-------------
 		//printList();
