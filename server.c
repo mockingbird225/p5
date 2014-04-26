@@ -442,7 +442,7 @@ void sff(int thdCount) {
 		}	
 		pthread_cond_signal(&producerCV);
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHandld, staticReq, dynReq);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHandld, staticReq, dynReq, sAlgo);
 		Close(req);
 	}	
 }
