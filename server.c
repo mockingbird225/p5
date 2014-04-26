@@ -165,8 +165,8 @@ void updateAge(struct List* temp) {
 	}
 }
 
-void enqueueSffbsNew(struct List* temp, struct List* prev, int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
-	int c = 0, isInsert = 0;
+void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
+	int c = 0;
 	struct List* temp1 = (struct List*)malloc(sizeof(struct List));
 	temp1->fd = connFd;
 	temp1->isStatic = _isStatic;
@@ -179,30 +179,30 @@ void enqueueSffbsNew(struct List* temp, struct List* prev, int connFd, int _isSt
 	strcpy(temp1->version, _version);
 	strcpy(temp1->filename, _filename);
 	temp1->statReqArrival = _statReqArrival;
-	while(temp != NULL && !isInsert) {
-			if(temp1->fileSize < temp->fileSize) {
-				if(prev) {
-					temp1->next = temp;
-					prev->next = temp1;
+	while(temp != NULL) {
+			printf("Here\n");
+			if(temp1->fileSize < (*temp)->fileSize) {
+				if(*prev) {
+					temp1->next = *temp;
+					(*prev)->next = temp1;
 				} else {
-					temp1->next = temp;
-					temp = temp1;
+					printf("Here1\n");
+					temp1->next = *temp;
+					*temp = temp1;
 				}
-				isInsert = 1;
-				count++;
-				//updateAge(temp1);
-				temp = temp->next;
+				break;
 			} else {
-				prev = temp;
-				temp = temp->next;	
+				*prev = *temp;
+				*temp = (*temp)->next;	
 				c++;
 			}
 	}
-	if(!isInsert && c == count) {
-		prev->next = temp1;
+	if(c == count) {
+		printf("Here2\n");
+		(*prev)->next = temp1;
 		temp1->next = NULL;
-		count++;
 	}
+	count++;
 }
 
 void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
@@ -227,12 +227,20 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 		count++;
 	} else {
 		if(tempFd == -1) {
-			enqueueSffbsNew(temp, prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
-			printf("head fd: %d\n", temp->fd);
+			printf("Before\n");
+			printList();
+			enqueueSffbsNew(&head, &prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+			printList();
 		} else {
 			while(temp != NULL) {
 				if(temp->fd == tempFd) {
-					enqueueSffbsNew(temp, prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+					if(temp->next) {
+					enqueueSffbsNew(&(temp->next), &prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+					
+					} else {
+						temp->next = temp1;
+						temp1->next = NULL;
+					}
 					break;
 				}
 				prev = temp;
@@ -241,8 +249,9 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 		}
 	}
 	numThSoFar++;
-	if(numThSoFar%numReq == 0) {
+	if(numThSoFar == numReq) {
 		tempFd = connFd;
+		numThSoFar = 0;
 	}
 }
 
@@ -536,6 +545,7 @@ void sff(int thdCount) {
 }
 
 void* handleRequest() {
+	//printf("Thread\n");
 	pthread_mutex_lock(&thdLock);
 	thdCount++;
 	if(thdCount > bufferSize) {
@@ -555,7 +565,8 @@ void* handleRequest() {
 	else if(!strcmp(sAlgo, "SFF-BS")) {
 		//Smallest File First implementation
 		sff(thdCount);
-	} /*`else if(!strcmp(q->algo, "SFF-BS")) {
+	}
+	/*}else if(!strcmp(q->algo, "SFF-BS")) {
 		// Smallest File first with bounded starvation implementation 
 		sffbs(q);
 	}*/
