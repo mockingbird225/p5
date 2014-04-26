@@ -180,13 +180,11 @@ void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _is
 	strcpy(temp1->filename, _filename);
 	temp1->statReqArrival = _statReqArrival;
 	while(temp != NULL) {
-			printf("Here\n");
 			if(temp1->fileSize < (*temp)->fileSize) {
 				if(*prev) {
 					temp1->next = *temp;
 					(*prev)->next = temp1;
 				} else {
-					printf("Here1\n");
 					temp1->next = *temp;
 					*temp = temp1;
 				}
@@ -198,7 +196,6 @@ void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _is
 			}
 	}
 	if(c == count) {
-		printf("Here2\n");
 		(*prev)->next = temp1;
 		temp1->next = NULL;
 	}
@@ -227,19 +224,18 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 		count++;
 	} else {
 		if(tempFd == -1) {
-			printf("Before\n");
-			printList();
 			enqueueSffbsNew(&head, &prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
-			printList();
 		} else {
 			while(temp != NULL) {
 				if(temp->fd == tempFd) {
 					if(temp->next) {
+					prev = temp;
 					enqueueSffbsNew(&(temp->next), &prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 					
 					} else {
 						temp->next = temp1;
 						temp1->next = NULL;
+						count++;
 					}
 					break;
 				}
@@ -249,9 +245,15 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 		}
 	}
 	numThSoFar++;
-	if(numThSoFar == numReq) {
-		tempFd = connFd;
-		numThSoFar = 0;
+	if(numThSoFar%numReq == 0) {
+		int j;
+		struct List * ptr = head;
+		for(j=0;ptr->next && j< (numThSoFar - (numThSoFar%numReq));j++)
+		{
+			ptr=ptr->next;
+			tempFd = ptr->fd;
+		}
+		//tempFd = connFd;
 	}
 }
 
@@ -566,10 +568,6 @@ void* handleRequest() {
 		//Smallest File First implementation
 		sff(thdCount);
 	}
-	/*}else if(!strcmp(q->algo, "SFF-BS")) {
-		// Smallest File first with bounded starvation implementation 
-		sffbs(q);
-	}*/
 	return 0;
 }
 
@@ -631,6 +629,7 @@ void printList() {
 	while(temp != NULL) {
 		printf("Ele: %d\n", temp->fd);
 		printf("File size: %d\n", temp->fileSize);
+		printf("Count: %d\n", count);
 		temp = temp->next;
 	}	
 	printf("----------List complete----------\n");
