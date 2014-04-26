@@ -17,6 +17,8 @@ int thdCount;
 int bufferSize;
 int numThreads;
 int tempBuffer;
+int numThSoFar;
+int tempFd;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t thdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -64,6 +66,8 @@ void initializeList() {
 	count = 0;
 	thdCount = -1;
 	tempBuffer = numReq;
+	tempFd = -1;
+	numThSoFar = 0;
 	/*q->bufferSize = numBuffers;
 	q->front = -1;
 	q->rear = -1;
@@ -161,6 +165,94 @@ void updateAge(struct List* temp) {
 	}
 }
 
+void enqueueSffbsNew(struct List* temp, struct List* prev, int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
+	int c = 0, isInsert = 0;
+	struct List* temp1 = (struct List*)malloc(sizeof(struct List));
+	temp1->fd = connFd;
+	temp1->isStatic = _isStatic;
+	temp1->fileSize = _fileSize;
+	temp1->modeErr = _modeErr;
+	temp1->age = 0;
+	strcpy(temp1->cgiargs, _cgiargs);
+	strcpy(temp1->method, _method);
+	strcpy(temp1->uri, _uri);
+	strcpy(temp1->version, _version);
+	strcpy(temp1->filename, _filename);
+	temp1->statReqArrival = _statReqArrival;
+	if(temp == NULL) {
+		printf("Inserting at head\n");
+		temp = temp1;
+		temp->next = NULL;
+		count++;
+	} else {
+		while(temp != NULL && !isInsert) {
+				if(temp1->fileSize < temp->fileSize) {
+					if(prev) {
+						temp1->next = temp;
+						prev->next = temp1;
+					} else {
+						temp1->next = temp;
+						temp = temp1;
+					}
+					isInsert = 1;
+					count++;
+					//updateAge(temp1);
+					temp = temp->next;
+				} else {
+					prev = temp;
+					temp = temp->next;	
+					c++;
+				}
+		}
+		if(!isInsert && c == count) {
+			prev->next = temp1;
+			temp1->next = NULL;
+			count++;
+		}
+	}
+}
+
+void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
+	struct List* temp = head;
+	struct List* prev = NULL;
+	struct List* temp1 = (struct List*)malloc(sizeof(struct List));
+	temp1->fd = connFd;
+	temp1->isStatic = _isStatic;
+	temp1->fileSize = _fileSize;
+	temp1->modeErr = _modeErr;
+	temp1->age = 0;
+	strcpy(temp1->cgiargs, _cgiargs);
+	strcpy(temp1->method, _method);
+	strcpy(temp1->uri, _uri);
+	strcpy(temp1->version, _version);
+	strcpy(temp1->filename, _filename);
+	temp1->statReqArrival = _statReqArrival;
+
+	if(head == NULL) {
+		head = temp1;
+		head->next = NULL;
+		count++;
+	} else {
+		if(tempFd == -1) {
+			enqueueSffbsNew(temp, prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+			printf("head fd: %d\n", temp->fd);
+		} else {
+			while(temp != NULL) {
+				if(temp->fd == tempFd) {
+					enqueueSffbsNew(temp, prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+					break;
+				}
+				prev = temp;
+				temp = temp->next;
+			}
+		}
+	}
+	numThSoFar++;
+	if(numThSoFar == numReq) {
+		tempFd = connFd;
+	}
+}
+
 void enqueueSff(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
 	struct List* temp = head;
 	int c = 0, isInsert = 0;
@@ -252,6 +344,9 @@ int dequeueSff(int* _isStatic, int* _fileSize, int* _modeErr, char* _cgiargs, ch
 		printf("List Empty\n");
 	} else {
 		x = head->fd;
+		if(tempFd == x) {
+			tempFd = -1;
+		}
 		*_isStatic = head->isStatic;
 		*_fileSize = head->fileSize;
 		*_modeErr = head->modeErr;
@@ -442,7 +537,7 @@ void sff(int thdCount) {
 		}	
 		pthread_cond_signal(&producerCV);
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHandld, staticReq, dynReq, sAlgo);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHandld, staticReq, dynReq);
 		Close(req);
 	}	
 }
@@ -495,7 +590,9 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 		findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 		enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 	} else if(!strcmp(sAlgo, "SFF-BS")) {
-		if(numReq <= 0) {
+		findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
+		enqueueSffbs(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
+		/*if(numReq <= 0) {
 			fprintf(stderr, "Epoch size should be greater than zero\n");
 			exit(1);
 		} else if(numReq >= bufferSize){
@@ -506,7 +603,7 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 			tempBuffer--;	
-			if(tempBuffer < 0) {
+			if(tempBuffer == 0) {
 				pthread_cond_wait(&epochCV, &lock);
 			}
 		}
@@ -514,13 +611,13 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 	if(!strcmp(sAlgo, "SFF-BS")) {
 		if(tempBuffer > 0) {
 			pthread_cond_signal(&consumerCV);
-		} else if(tempBuffer <= 0) {
+		} else if(tempBuffer == 0) {
 			pthread_cond_signal(&consumerCV);
 			tempBuffer = numReq;
 		}
-	} else {
-		pthread_cond_signal(&consumerCV);
+	} else {*/
 	}
+	pthread_cond_signal(&consumerCV);
 	pthread_mutex_unlock(&lock);
 }
 

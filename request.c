@@ -134,7 +134,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs)
 }
 
 
-void requestServeStatic(int fd, char *filename, int filesize, char* sAlgo) 
+void requestServeStatic(int fd, char *filename, int filesize) 
 {
 	int srcfd;
 	char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -177,18 +177,9 @@ void requestServeStatic(int fd, char *filename, int filesize, char* sAlgo)
 	sprintf(buf, "%s Stat-req-dispatch: %d\r\n", buf, (int)statReqDispatch);
 	sprintf(buf, "%s Stat-req-read: %d\r\n", buf, (int)statReqRead);
 	sprintf(buf, "%s Stat-req-complete: %d\r\n", buf, (int)statReqComplete);
-	if(!strcmp(sAlgo, "SFF-BS"))
-	sprintf(buf, "%s Stat-req-age:%d\r\n", buf, age+1);
-	else
 	sprintf(buf, "%s Stat-req-age:%d\r\n", buf, age);
 	sprintf(buf, "%s Stat-thread-id: %d\r\n", buf, thdId);
-	if(!strcmp(sAlgo, "SFF-BS"))
-	sprintf(buf, "%s Stat-thread-count: %d\r\n", buf, reqHandld+1);
-	else
 	sprintf(buf, "%s Stat-thread-count: %d\r\n", buf, reqHandld);
-	if(!strcmp(sAlgo, "SFF-BS"))
-	sprintf(buf, "%s Stat-thread-static: %d\r\n", buf, statReq+1);
-	else
 	sprintf(buf, "%s Stat-thread-static: %d\r\n", buf, statReq);
 	sprintf(buf, "%s Stat-thread-dynamic: %d\r\n", buf, dynReq);
 
@@ -203,7 +194,7 @@ void requestServeStatic(int fd, char *filename, int filesize, char* sAlgo)
 
 }
 
-/*void requestHandleFifo(int fd, suseconds_t _statReqArrival, suseconds_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq)
+void requestHandleFifo(int fd, suseconds_t _statReqArrival, suseconds_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq)
 {
 	int is_static;
 	struct stat sbuf;
@@ -246,7 +237,7 @@ void requestServeStatic(int fd, char *filename, int filesize, char* sAlgo)
 		}
 		requestServeDynamic(fd, filename, cgiargs);
 	}
-}*/
+}
 
 
 // handle a request
@@ -290,7 +281,7 @@ void findReqSize(int fd, int* isStatic, int* fileSize, int* modeErr, char* cgiar
 	}
 }
 
-void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* cgiargs, char* method, char* uri, char* version, char* filename,suseconds_t _statReqArrival, suseconds_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq, char* sAlgo) {
+void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* cgiargs, char* method, char* uri, char* version, char* filename,suseconds_t _statReqArrival, suseconds_t _statReqDispatch, int _age, int _id, int _reqHandld, int _statReq, int _dynReq) {
 	printf("%s %s %s\n", method, uri, version);
 
 	statReqArrival = _statReqArrival;
@@ -301,7 +292,7 @@ void requestHandleSff(int fd, int isStatic, int fileSize, int modeError, char* c
 	statReq = _statReq;
 	dynReq = _dynReq;
 	if(isStatic) {
-		requestServeStatic(fd, filename, fileSize, sAlgo);
+		requestServeStatic(fd, filename, fileSize);
 	} else {
 		if (modeError) {
 		    requestError(fd, filename, "403", "Forbidden", "CS537 Server could not run this CGI program");
