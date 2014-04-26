@@ -333,8 +333,10 @@ void updateThdListSff(int _id, int _isStatic) {
 			temp->reqHandld++;
 			if(_isStatic) {
 				temp->statReqHandled++;
+				printf(" %d\n", temp->statReqHandled);
 			} else {
 				temp->dynReqHandled++;
+				printf(" %d\n", temp->dynReqHandled);
 			}
 		}
 		temp = temp->next;
@@ -500,12 +502,11 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 		} else {
-			
+				
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
-			tempBuffer--;
+			tempBuffer--;	
 			if(tempBuffer < 0) {
-				//printf("Greater than epoch\n");	
 				pthread_cond_wait(&epochCV, &lock);
 			}
 		}
