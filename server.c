@@ -503,9 +503,8 @@ void processConn(int connFd, suseconds_t _statReqArrival) {
 			
 			findReqSize(connFd, &(_isStatic), &(_fileSize),  &modeErr, _cgiargs, _method, _uri, _version, _filename);
 			enqueueSff(connFd, _isStatic, _fileSize, modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
-			pthread_cond_signal(&consumerCV);
 			tempBuffer--;
-			if(tempBuffer == 0) {
+			if(tempBuffer < 0) {
 				//printf("Greater than epoch\n");	
 				pthread_cond_wait(&epochCV, &lock);
 			}
