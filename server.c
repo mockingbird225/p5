@@ -188,6 +188,7 @@ void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _is
 					temp1->next = *temp;
 					*temp = temp1;
 				}
+				updateAge(temp1);
 				break;
 			} else {
 				*prev = *temp;
