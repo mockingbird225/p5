@@ -179,36 +179,29 @@ void enqueueSffbsNew(struct List* temp, struct List* prev, int connFd, int _isSt
 	strcpy(temp1->version, _version);
 	strcpy(temp1->filename, _filename);
 	temp1->statReqArrival = _statReqArrival;
-	if(temp == NULL) {
-		printf("Inserting at head\n");
-		temp = temp1;
-		temp->next = NULL;
-		count++;
-	} else {
-		while(temp != NULL && !isInsert) {
-				if(temp1->fileSize < temp->fileSize) {
-					if(prev) {
-						temp1->next = temp;
-						prev->next = temp1;
-					} else {
-						temp1->next = temp;
-						temp = temp1;
-					}
-					isInsert = 1;
-					count++;
-					//updateAge(temp1);
-					temp = temp->next;
+	while(temp != NULL && !isInsert) {
+			if(temp1->fileSize < temp->fileSize) {
+				if(prev) {
+					temp1->next = temp;
+					prev->next = temp1;
 				} else {
-					prev = temp;
-					temp = temp->next;	
-					c++;
+					temp1->next = temp;
+					temp = temp1;
 				}
-		}
-		if(!isInsert && c == count) {
-			prev->next = temp1;
-			temp1->next = NULL;
-			count++;
-		}
+				isInsert = 1;
+				count++;
+				//updateAge(temp1);
+				temp = temp->next;
+			} else {
+				prev = temp;
+				temp = temp->next;	
+				c++;
+			}
+	}
+	if(!isInsert && c == count) {
+		prev->next = temp1;
+		temp1->next = NULL;
+		count++;
 	}
 }
 
@@ -248,7 +241,7 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 		}
 	}
 	numThSoFar++;
-	if(numThSoFar == numReq) {
+	if(numThSoFar%numReq == 0) {
 		tempFd = connFd;
 	}
 }
