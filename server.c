@@ -577,7 +577,6 @@ void* handleRequest() {
 }
 
 void processConn(int connFd, suseconds_t _statReqArrival) {
-	int i;
 	int qEmptyFlag = 0, _isStatic, _fileSize, modeErr = 0;
 	char _cgiargs[MAXLINE], _method[MAXLINE], _uri[MAXLINE], _version[MAXLINE], _filename[MAXLINE]; 
 	 
