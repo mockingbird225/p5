@@ -51,7 +51,7 @@ class testit(Thread):
         self.clientname = clientname
 
     def run(self):
-        clientcmd = "./testclient localhost 8045 /output.cgi"
+        clientcmd = "./testclient localhost 2010 /output.cgi"
         print self.clientname + ": " + clientcmd
         response = commands.getoutput(clientcmd)
         if response.find("Welcome to the CGI program") == -1:
@@ -63,13 +63,13 @@ class testit(Thread):
 util.make()
 
 # test FIFO server
-test("./server 8045 2 3 FIFO")
+test("./server 2010 2 3 FIFO")
 
 # test SFF server
-test("./server 8045 2 3 SFF")
+test("./server 2010 2 3 SFF")
 
 # test SFF-BS
-test("./server 8045 2 3 SFF-BS 2")
+test("./server 2010 2 3 SFF-BS 2")
 
 util.good("your server has fixed size of worker pool! congrats...!")
 

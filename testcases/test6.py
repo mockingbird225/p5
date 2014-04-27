@@ -57,7 +57,7 @@ class testit(Thread):
         self.clientname = clientname
 
     def run(self):
-        clientcmd = "./testclient localhost 8045 /testdata/testfile.txt"
+        clientcmd = "./testclient localhost 2010 /testdata/testfile.txt"
         util.info(self.clientname + ": " + clientcmd)
         response = commands.getoutput(clientcmd)
         if response.find("hey this is a test file") == -1:
@@ -69,13 +69,13 @@ class testit(Thread):
 util.make()
 
 # test FIFO server
-test("./server 8045 3 4 FIFO")
+test("./server 2010 3 4 FIFO")
 
 # test SFF server
-test("./server 8045 3 4 SFF")
+test("./server 2010 3 4 SFF")
 
 # test SFF-BS
-test("./server 8045 3 4 SFF-BS 2")
+test("./server 2010 3 4 SFF-BS 2")
 util.info("")
 util.info("##########################################################")
 util.info("GOOD! if you see this message, your server does not crash!")

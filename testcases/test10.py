@@ -45,23 +45,23 @@ def test(cmd):
     commands.getoutput("rm -rf " + file3)
     commands.getoutput("rm -rf " + file4)
 
-    os.system("./testclient localhost 8001 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
     time.sleep(0.6)
-#    os.system("./testclient localhost 8001 /testdata/file-sff-large.txt > /tmp/file1 &");
-    os.system("./testclient localhost 8001 /testdata/file-sff-large.txt > %s &" % file1);
+#    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > /tmp/file1 &");
+    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > %s &" % file1);
     time.sleep(0.1)
-#    os.system("./testclient localhost 8001 /testdata/file-sff-small.txt > /tmp/file2 &");
-    os.system("./testclient localhost 8001 /testdata/file-sff-small.txt > %s &" % file2);
+#    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > /tmp/file2 &");
+    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > %s &" % file2);
     time.sleep(0.1)
-    os.system("./testclient localhost 8001 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
     time.sleep(0.1)
-#    os.system("./testclient localhost 8001 /testdata/file-sff-large.txt > /tmp/file3 &");
-    os.system("./testclient localhost 8001 /testdata/file-sff-large.txt > %s &" % file3);
+#    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > /tmp/file3 &");
+    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > %s &" % file3);
     time.sleep(0.1)
-#    os.system("./testclient localhost 8001 /testdata/file-sff-small.txt > /tmp/file4 &");
-    os.system("./testclient localhost 8001 /testdata/file-sff-small.txt > %s &" % file4);
+#    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > /tmp/file4 &");
+    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > %s &" % file4);
     time.sleep(0.1)
-    os.system("./testclient localhost 8001 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
 
     time.sleep(4 * CGI_SPIN_TIME + 3)
 
@@ -80,12 +80,12 @@ def test(cmd):
     time_decimal4 = str(os.path.getmtime(file4))
     passed = Decimal(time_decimal1).compare_total(Decimal(time_decimal2)) != -1 and Decimal(time_decimal3).compare_total(Decimal(time_decimal4)) != -1 and Decimal(time_decimal4).compare_total(Decimal(time_decimal1)) != -1
   
-    print "time1 = " + str(time_decimal1)
-    print "time2 = " + str(time_decimal2)
-    print "time3 = " + str(time_decimal3)
-    print "time4 = " + str(time_decimal4)
+    # print "time1 = " + str(time_decimal1)
+    # print "time2 = " + str(time_decimal2)
+    # print "time3 = " + str(time_decimal3)
+    # print "time4 = " + str(time_decimal4)
 
-    print "expected = " + "time1 >= time2 and time3 > time4 and time4 >= time1"
+    # print "expected = " + "time1 >= time2 and time3 > time4 and time4 >= time1"
     # passed = time1 >= time2 and time3 > time4 and time4 >= time1
 
     if passed:
@@ -117,8 +117,8 @@ for i in range(0, NUM_LOOPS):
     print "- %s iteration" % str(i)
     print "#############################"
     print ""
-    test("./server 8001 1 6 SFF-BS 3")
-#    test("./server 8001 1 6 FIFO")
+    test("./server 2010 1 6 SFF-BS 3")
+#    test("./server 2010 1 6 FIFO")
 
 
 sys.exit(0)

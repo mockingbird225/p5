@@ -25,9 +25,9 @@ def test(cmd):
     
     commands.getoutput("rm -rf " + file1)
     util.info("")
-    util.info("- Sending ./testclient localhost 8001 /testdata/file1.txt")
+    util.info("- Sending ./testclient localhost 2010 /testdata/file1.txt")
 
-    res = commands.getoutput("./testclient localhost 8001 /testdata/file1.txt")
+    res = commands.getoutput("./testclient localhost 2010 /testdata/file1.txt")
     arrival = util.get_stat2(res, "Stat-req-arrival")
     dispatch = util.get_stat2(res, "Stat-req-dispatch")
     read = util.get_stat2(res, "Stat-req-read")
@@ -48,9 +48,9 @@ util.make()
 
 
 
-test("./server 8001 2 4 FIFO")
-test("./server 8001 2 4 SFF")
-test("./server 8001 2 4 SFF-BS 2")
+test("./server 2010 2 4 FIFO")
+test("./server 2010 2 4 SFF")
+test("./server 2010 2 4 SFF-BS 2")
 
 sys.exit(0)
 

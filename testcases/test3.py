@@ -16,10 +16,10 @@ def main():
 
     # 2. ok you got an excutable server, run it
     print ""
-    print "Starting ./server 8045 1 1 FIFO"
-    util.run("./server 8045 1 1 FIFO")
+    print "Starting ./server 2010 1 1 FIFO"
+    util.run("./server 2010 1 1 FIFO")
 
-    clientcmd = "./testclient localhost 8045 /testdata/testfile.txt"
+    clientcmd = "./testclient localhost 2010 /testdata/testfile.txt"
     print "Client: " + clientcmd
     response = commands.getoutput(clientcmd)
     if response.find("hey this is a test file") == -1:
@@ -28,8 +28,8 @@ def main():
 
 
     print ""
-    print "Starting server 8045 1 1 SFF"
-    util.run("./server 8045 1 1 SFF")
+    print "Starting server 2010 1 1 SFF"
+    util.run("./server 2010 1 1 SFF")
     print "Client: " + clientcmd
     response = commands.getoutput(clientcmd)
     if response.find("hey this is a test file") == -1:
@@ -37,8 +37,8 @@ def main():
     print "Client got expected response"
  
     print ""
-    print "Starting server 8045 1 1 SFF-BS"
-    util.run("./server 8045 1 1 SFF-BS 1")
+    print "Starting server 2010 1 1 SFF-BS"
+    util.run("./server 2010 1 1 SFF-BS 1")
     print "Client: " + clientcmd
     response = commands.getoutput(clientcmd)
     if response.find("hey this is a test file") == -1:

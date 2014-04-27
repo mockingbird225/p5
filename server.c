@@ -20,6 +20,7 @@ int numThreads;
 int tempBuffer;
 int numThSoFar;
 int tempFd;
+int reqHld,statReqHld,dynReqHld;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t thdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -61,6 +62,9 @@ void initializeList() {
 	tempBuffer = numReq;
 	tempFd = -1;
 	numThSoFar = 0;
+	reqHld=0;
+	statReqHld=0;
+	dynReqHld=0;
 }
 
 void enqueueFifoNew(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char* _method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
@@ -275,15 +279,21 @@ int isListFull() {
 }
 
 void dequeueThdList(int thdCount, int* _reqHandld, int* _statReq, int* _dynReq) {
+	reqHld++;
+	statReqHld++;
+	dynReqHld++;
+/*
 	struct ThreadList* temp = headThd;
 	while(temp != NULL) {
-		if(temp->id == thdCount) {
+		//if(temp->id == thdCount) {
+		{
 			*_reqHandld = temp->reqHandld;
 			*_statReq = temp->statReqHandled;
 			*_dynReq = temp->dynReqHandled;
 		}
 		temp = temp->next;
 	}
+*/
 }
 
 
@@ -417,7 +427,7 @@ void sff(int thdCount) {
 		//}
 		qFullFlag = 0;
 		pthread_mutex_unlock(&lock);
-		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHandld, staticReq, dynReq);
+		requestHandleSff(req, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival, statReqDispatch, _age, thdCount, reqHld, statReqHld, dynReqHld);
 		Close(req);
 	}	
 }

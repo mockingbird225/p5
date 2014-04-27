@@ -25,13 +25,13 @@ def test(cmd):
     
     commands.getoutput("rm -rf " + file1)
 
-    os.system("./testclient localhost 8001 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
     time.sleep(0.5)
-    os.system("./testclient localhost 8001 /testdata/file3.txt >> /dev/null &")
+    os.system("./testclient localhost 2010 /testdata/file3.txt >> /dev/null &")
     time.sleep(0.2)
-    os.system("./testclient localhost 8001 /testdata/file2.txt >> /dev/null &")
+    os.system("./testclient localhost 2010 /testdata/file2.txt >> /dev/null &")
     time.sleep(0.2)
-    res = commands.getoutput("./testclient localhost 8001 /testdata/file1.txt")
+    res = commands.getoutput("./testclient localhost 2010 /testdata/file1.txt")
 
     age = util.get_stat2(res, "Stat-req-age")
 
@@ -62,9 +62,9 @@ util.make()
 
 
 # test SFF server
-test("./server 8001 1 4 FIFO")
-test("./server 8001 1 4 SFF")
-test("./server 8001 1 4 SFF-BS 2")
+test("./server 2010 1 4 FIFO")
+test("./server 2010 1 4 SFF")
+test("./server 2010 1 4 SFF-BS 2")
 
 sys.exit(0)
 

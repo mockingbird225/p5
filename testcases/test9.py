@@ -38,15 +38,15 @@ def test(cmd):
     
     commands.getoutput("rm -rf " + file1)
     commands.getoutput("rm -rf " + file2)
-    os.system("./testclient localhost 8045 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
     time.sleep(0.3)
-#    os.system("./testclient localhost 8045 /testdata/file-sff-large.txt > /tmp/file1 &");
-    os.system("./testclient localhost 8045 /testdata/file-sff-large.txt > %s &" % file1);
+#    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > /tmp/file1 &");
+    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > %s &" % file1);
 #   time.sleep(0.1)
-    os.system("./testclient localhost 8045 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
 #   time.sleep(0.1)
-#    os.system("./testclient localhost 8045 /testdata/file-sff-small.txt > /tmp/file2 &");
-    os.system("./testclient localhost 8045 /testdata/file-sff-small.txt > %s &" % file2);
+#    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > /tmp/file2 &");
+    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > %s &" % file2);
 
 
     time.sleep(3 *  CGI_SPIN_TIME)
@@ -98,7 +98,7 @@ for i in range(0, NUM_LOOPS):
     print "- %s iteration" % str(i)
     print "#############################"
     print ""
-    test("./server 8045 1 4 SFF")
+    test("./server 2010 1 4 SFF")
 
 
 sys.exit(0)
