@@ -159,11 +159,14 @@ void insertThdList(int thdCount) {
 }
 
 void updateAge(struct List* temp) {
-	temp = temp-> next;
-	while(temp != NULL) {
-		temp->age++;
-		temp = temp->next;
+	struct List* ptr = head;
+	int count=0;
+	while(ptr!=temp)
+	{
+		count++;
+		ptr=ptr->next;
 	}
+	temp->age=count;
 }
 
 void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
@@ -189,7 +192,7 @@ void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _is
 					temp1->next = *temp;
 					*temp = temp1;
 				}
-				updateAge(temp1);
+				//updateAge(temp1);
 				break;
 			} else {
 				*prev = *temp;
@@ -202,6 +205,7 @@ void enqueueSffbsNew(struct List** temp, struct List** prev, int connFd, int _is
 		temp1->next = NULL;
 	}
 	count++;
+	updateAge(temp1);
 }
 
 void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* _cgiargs, char*_method, char* _uri, char* _version, char* _filename, suseconds_t _statReqArrival) {
@@ -221,16 +225,13 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 	temp1->statReqArrival = _statReqArrival;
 
 	if(head == NULL) {
-		printf("Inserting at head\n");
 		head = temp1;
 		head->next = NULL;
 		count++;
 	} else {
 		if(tempFd == -1) {
-		printf("Inserting in 1st epoch\n");
 			enqueueSffbsNew(&head, &prev, connFd, _isStatic, _fileSize, _modeErr, _cgiargs, _method, _uri, _version, _filename, _statReqArrival);
 		} else {
-			printf("Inserting in middle epoch\n");
 			while(temp != NULL) {
 				if(temp->fd == tempFd) {
 					if(temp->next) {
@@ -241,6 +242,7 @@ void enqueueSffbs(int connFd, int _isStatic, int _fileSize, int _modeErr, char* 
 						temp->next = temp1;
 						temp1->next = NULL;
 						count++;
+						updateAge(temp1);
 					}
 					break;
 				}
