@@ -54,20 +54,20 @@ def test(cmd):
     commands.getoutput("rm -rf " + file2)
     commands.getoutput("rm -rf " + file3)
 
-    os.system("./testclient localhost 2010 /output10.cgi >> /dev/null &");
+    os.system("./testclient localhost 8045 /output10.cgi >> /dev/null &");
     time.sleep(1)
-#    os.system("./testclient localhost 2010 /testdata/file1.txt > /tmp/file1 &");
-    os.system("./testclient localhost 2010 /testdata/file1.txt > %s &" % file1);
+#    os.system("./testclient localhost 8045 /testdata/file1.txt > /tmp/file1 &");
+    os.system("./testclient localhost 8045 /testdata/file1.txt > %s &" % file1);
     time.sleep(1)
-    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 8045 /output.cgi >> /dev/null &");
     time.sleep(1)
-#    os.system("./testclient localhost 2010 /testdata/file2.txt > /tmp/file2 &");
-    os.system("./testclient localhost 2010 /testdata/file2.txt > %s &" % file2);
+#    os.system("./testclient localhost 8045 /testdata/file2.txt > /tmp/file2 &");
+    os.system("./testclient localhost 8045 /testdata/file2.txt > %s &" % file2);
     time.sleep(1)
-    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 8045 /output.cgi >> /dev/null &");
     time.sleep(1)
-#    os.system("./testclient localhost 2010 /testdata/file3.txt > /tmp/file3 &");
-    os.system("./testclient localhost 2010 /testdata/file3.txt > %s &" % file3);
+#    os.system("./testclient localhost 8045 /testdata/file3.txt > /tmp/file3 &");
+    os.system("./testclient localhost 8045 /testdata/file3.txt > %s &" % file3);
 
 
 
@@ -133,7 +133,7 @@ class testit(Thread):
         self.id = id
 
     def run(self):
-        clientcmd = "./testclient localhost 2010 "
+        clientcmd = "./testclient localhost 8045 "
         if self.id == 0:
             file = "/output.cgi"
         else:
@@ -144,7 +144,7 @@ class testit(Thread):
 
         os.system(clientcmd)
         if self.id != 0:
-            os.system("./testclient localhost 2010 /output.cgi > /dev/null &")
+            os.system("./testclient localhost 8045 /output.cgi > /dev/null &")
 
 
 util.make()
@@ -157,7 +157,7 @@ for i in range(0, NUM_LOOPS):
     print "- %s iteration" % str(i)
     print "#############################"
     print ""
-    test("./server 2010 1 7 FIFO")
+    test("./server 8045 1 7 FIFO")
 
 util.good("great! FIFO is done correctly")
 

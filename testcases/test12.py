@@ -36,11 +36,11 @@ def test(cmd):
     
     commands.getoutput("rm -rf " + file1)
     commands.getoutput("rm -rf " + file2)
-    os.system("./testclient localhost 2010 /output.cgi >> /dev/null &");
+    os.system("./testclient localhost 8045 /output.cgi >> /dev/null &");
     time.sleep(0.3)
-    os.system("./testclient localhost 2010 /testdata/file-sff-large.txt > %s &" % file1);
+    os.system("./testclient localhost 8045 /testdata/file-sff-large.txt > %s &" % file1);
     time.sleep(0.3)
-    os.system("./testclient localhost 2010 /testdata/file-sff-small.txt > %s &" % file2);
+    os.system("./testclient localhost 8045 /testdata/file-sff-small.txt > %s &" % file2);
     
     time.sleep(10)
     #count1 = util.get_stat_thread_count(file1)
@@ -73,8 +73,8 @@ util.make()
 
 # test SFF server
 
-test("./server 2010 1 4 SFF")
-test("./server 2010 1 4 FIFO")
+test("./server 8045 1 4 SFF")
+test("./server 8045 1 4 FIFO")
 
 
 sys.exit(0)

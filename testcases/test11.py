@@ -105,7 +105,7 @@ class testit(Thread):
         self.clientname = clientname
 
     def run(self):
-        clientcmd = "./testclient localhost 2010 /output.cgi"
+        clientcmd = "./testclient localhost 8045 /output.cgi"
         print self.clientname + ": " + clientcmd
         response = commands.getoutput(clientcmd)
         lock.acquire()
@@ -115,13 +115,13 @@ class testit(Thread):
 util.make()
 
 # test FIFO server
-test("./server 2010 2 2 FIFO")
+test("./server 8045 2 2 FIFO")
 
 # test SFF server
-test("./server 2010 2 2 SFF")
+test("./server 8045 2 2 SFF")
 
 # test SFF-BS
-test("./server 2010 2 2 SFF-BS 2")
+test("./server 8045 2 2 SFF-BS 2")
 
 sys.exit(0)
 
